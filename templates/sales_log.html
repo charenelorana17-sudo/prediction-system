@@ -1,0 +1,1062 @@
+{% extends "base.html" %}
+{% block content %}
+{# Sales log page: manual data entry, CSV import, record filtering, and table listing #}
+<div class="hero card sales-hero">
+  <div class="sales-hero-content" style="justify-content: space-between !important;">
+    <div>
+      <h2 class="hero-title" style="font-size: 2.6rem;">Sales Log</h2>
+      <p class="hero-copy" style="font-size: 1.15rem;">Historical record of daily bread sales.</p>
+    </div>
+    <div class="hero-actions sales-actions" style="justify-content: flex-end !important; flex: 0 0 auto; gap: 0.75rem;">
+      <button type="button" class="button button-secondary" onclick="scrollToHistoryTable()" title="Scroll to sales history">View History</button>
+      <button type="button" class="button button-secondary" onclick="printSalesTable()" title="Print sales table">Print</button>
+      <form method="post" class="hero-action-form" onsubmit="return confirm('Clear all sales records? This cannot be undone.');">
+        <input type="hidden" name="action" value="clear_sales_data" />
+      </form>
+      <form method="post" enctype="multipart/form-data" class="hero-action-form">
+        <input type="hidden" name="action" value="upload_excel" />
+        <input id="upload-input" name="file" type="file" accept=".xlsx,.xls" hidden onchange="this.form.submit()" />
+        <button type="button" class="button button-primary" onclick="document.getElementById('upload-input').click()">Upload</button>
+      </form>
+    </div>
+  </div>
+  <div class="hero-background">
+    <img src="{{ url_for('static', filename='cc.png') }}" alt="Bakery Display" />
+  </div>
+</div>
+
+<div class="card" id="manual-entry">
+  <div class="card-header manual-entry-toggle-header expanded" onclick="toggleManualEntrySection()" role="button" tabindex="0" aria-expanded="true">
+    <div>
+      <h3>Manual Entry</h3>
+      <p class="muted-text">Daily batch sales entry for all bread types.</p>
+    </div>
+    <div class="manual-entry-summary">
+      <div class="manual-entry-summary-pill">
+        <span class="metric-label">Date</span>
+        <span class="metric-value">{{ today }}</span>
+      </div>
+      <div class="manual-entry-summary-pill">
+        <span class="metric-label">Rows</span>
+        <span class="metric-value">{{ bread_types|length }}</span>
+      </div>
+      <div class="toggle-icon">
+        <svg class="manual-entry-chevron rotated" width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div id="manual-entry-section" class="manual-entry-section">
+    <form method="post" class="sales-entry-form" id="batch-entry-form">
+      <input type="hidden" name="action" value="save_batch_records" />
+
+      <div class="manual-entry-meta-grid" style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items:end;">
+        <div class="input-group" style="max-width: 320px; margin:0;">
+          <label class="input-label">Start Date</label>
+          <input name="date" type="date" class="input" value="{{ today }}" required />
+        </div>
+        <div class="input-group" style="max-width: 320px; margin:0;">
+          <label class="input-label">Date Scope</label>
+          <select name="scope_days" class="select" aria-label="Manual entry date scope">
+            <option value="1">Daily</option>
+            <option value="2">2 days</option>
+            <option value="3">3 days</option>
+            <option value="4">4 days</option>
+            <option value="5">5 days</option>
+            <option value="6">6 days</option>
+            <option value="7">1 week</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bread-entry-grid" style="margin-top:1rem;">
+        {% for bread in bread_types %}
+        <div class="bread-entry-card">
+          <input type="hidden" name="bread_type" value="{{ bread }}" />
+          <div class="bread-entry-header">
+            <span>{{ bread }}</span>
+          </div>
+          <div class="bread-entry-fields">
+            <label>
+              Produced
+              <input name="produced" type="number" class="input" value="0" min="0" step="1" />
+            </label>
+            <label>
+              Sold
+              <input name="sold" type="number" class="input" value="0" min="0" step="1" />
+            </label>
+            <label>
+              Price
+              <input name="price" type="number" class="input" value="4.5" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-controls" style="margin-top:1.25rem; justify-content:flex-end;">
+        <button type="submit" class="button button-primary button-lg">Save All Records</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-divider"></div>
+
+
+<div class="card summary-grid">
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(34, 197, 94, 0.28); box-shadow: 0 12px 28px rgba(34, 197, 94, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #15803d; font-weight: 800;">Dataset</div>
+    <div class="metric-value" style="font-size: 1.5rem; color: #15803d; font-weight: 900;">{{ total_dataset }}</div>
+  </div>
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(14, 165, 233, 0.28); box-shadow: 0 12px 28px rgba(14, 165, 233, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #0369a1; font-weight: 800;">Filtered</div>
+    <div class="metric-value" id="metric-filtered-value" style="font-size: 1.5rem; color: #0369a1; font-weight: 900;">{{ total_filtered }}</div>
+  </div>
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(245, 158, 11, 0.30); box-shadow: 0 12px 28px rgba(245, 158, 11, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #b45309; font-weight: 800;">Sold</div>
+    <div class="metric-value" style="font-size: 1.5rem; color: #b45309; font-weight: 900;">{{ sold_count }}</div>
+  </div>
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(236, 72, 153, 0.30); box-shadow: 0 12px 28px rgba(236, 72, 153, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #be185d; font-weight: 800;">Produced</div>
+    <div class="metric-value" style="font-size: 1.5rem; color: #be185d; font-weight: 900;">{{ produced_count }}</div>
+  </div>
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(139, 92, 246, 0.30); box-shadow: 0 12px 28px rgba(139, 92, 246, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #6d28d9; font-weight: 800;">Waste</div>
+    <div class="metric-value" style="font-size: 1.5rem; color: #6d28d9; font-weight: 900;">{{ total_waste }}</div>
+  </div>
+  <div class="metric-card" style="padding: 0.75rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(255, 255, 255, 0.96)); border: 1px solid rgba(16, 185, 129, 0.30); box-shadow: 0 12px 28px rgba(16, 185, 129, 0.08);">
+    <div class="metric-label" style="font-size: 0.75rem; margin-bottom: 0.25rem; color: #047857; font-weight: 800;">Rate</div>
+    <div class="metric-value" style="font-size: 1.5rem; color: #047857; font-weight: 900;">{{ waste_rate }}%</div>
+  </div>
+</div>
+
+<!-- Key Metrics Display -->
+{% if total_dataset or monthly_expense or profit_value %}
+<div class="card" style="margin-top: 2rem;">
+  <div class="card-header">
+    <h3>Financial Summary</h3>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; padding: 1.5rem;">
+    <!-- Total Sales - Orange -->
+    <div style="background: linear-gradient(135deg, rgba(255, 140, 0, 0.1) 0%, rgba(255, 165, 0, 0.15) 100%); border: 2px solid #ff8c00; border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.875rem; color: #ff8c00; font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Sales</div>
+      <div style="font-size: 2.5rem; font-weight: bold; color: #ff8c00;">₱{{ "{:,.2f}".format(total_sales_value) }}</div>
+    </div>
+    
+    <!-- Total Expenses - White/Gray -->
+    <div style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(245, 245, 245, 0.1) 100%); border: 2px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.875rem; color: var(--text); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Expenses</div>
+      <div style="font-size: 2.5rem; font-weight: bold; color: var(--text);">₱{{ "{:,.2f}".format(monthly_expense) }}</div>
+      <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem;">{{ expense_scope }}</div>
+    </div>
+    
+    <!-- Total Profit - Styled like Expenses -->
+<div style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(245, 245, 245, 0.1) 100%);
+            border: 2px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; text-align: center;">
+  
+  <div style="font-size: 0.875rem; color: var(--text); font-weight: 600; margin-bottom: 0.5rem;
+              text-transform: uppercase; letter-spacing: 0.5px;">
+    Total Profit
+  </div>
+
+  <div style="font-size: 2.5rem; font-weight: bold; {{ 'color: #ef4444;' if profit_value < 0 else 'color: #1d4ed8;' }}">
+    ₱{{ "{:,.2f}".format(profit_value) }}
+  </div>
+
+  <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem;">
+    {% if profit_value < 0 %}Deficiency{% else %}Surplus{% endif %}
+  </div>
+</div>
+
+  </div>
+</div>
+{% endif %}
+
+<!-- Sales Log: tabbed calendar filter (Daily / Weekly / Monthly / Yearly) -->
+<div class="sales-tabbed-filter" style="margin: 0 0 0.6rem 0;">
+  <div class="tabs" role="tablist" aria-label="Sales date range filter" style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" class="tab active" data-range="daily" role="tab" aria-selected="true">Daily</button>
+    <button type="button" class="tab" data-range="weekly" role="tab" aria-selected="false">Weekly</button>
+    <button type="button" class="tab" data-range="monthly" role="tab" aria-selected="false">Monthly</button>
+    <button type="button" class="tab" data-range="yearly" role="tab" aria-selected="false">Yearly</button>
+  </div>
+  <!-- Hidden form used by the tabs to request server-side filtering -->
+  <form id="tab-filter-form" method="get" style="display:none;">
+    <input type="hidden" name="filter_date" id="tab-filter-date" value="{{ filter_date }}" />
+    <input type="hidden" name="filter_bread" value="{{ filter_bread }}" />
+    <input type="hidden" name="history_period" id="tab-history-period" value="{{ history_period or 'all' }}" />
+    <input type="hidden" name="filter_month" id="tab-filter-month" value="{{ filter_month }}" />
+  </form>
+
+  <!-- Period controls: month/year selection (shown only for Monthly/Yearly) -->
+  <div id="period-controls" style="display:flex; gap:8px; align-items:center; margin-left:12px;">
+    <div id="monthly-controls" style="display:none; gap:8px; align-items:center;">
+      <select id="month-select" aria-label="Select month" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel);">
+        <option value="01">January</option>
+        <option value="02">February</option>
+        <option value="03">March</option>
+        <option value="04">April</option>
+        <option value="05">May</option>
+        <option value="06">June</option>
+        <option value="07">July</option>
+        <option value="08">August</option>
+        <option value="09">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+      <select id="month-year-select" aria-label="Select year" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel);">
+        {% for y in range(2022, (today[:4]|int + 2)) %}
+          <option value="{{ y }}" {% if y == (today[:4]|int) %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" id="month-apply" class="button button-sm" style="padding:8px 12px;">Apply</button>
+    </div>
+
+    <div id="yearly-controls" style="display:none; gap:8px; align-items:center;">
+      <select id="year-select" aria-label="Select year" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel);">
+        {% for y in range(2022, (today[:4]|int + 2)) %}
+          <option value="{{ y }}" {% if y == (today[:4]|int) %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" id="year-apply" class="button button-sm" style="padding:8px 12px;">Apply</button>
+    </div>
+  </div>
+  <div class="tab-help" style="margin-left:auto; color:var(--muted); font-size:0.95rem; align-self:center;">
+    Using date: <strong id="filter-date-label">{{ filter_date or today }}</strong>
+  </div>
+</div>
+
+<div class="compact-filter-row">
+  {% if message %}
+    <div class="alert">{{ message }}</div>
+  {% endif %}
+  <form method="get" class="compact-filter-form">
+    <div class="input-group">
+      <label class="input-label">Date</label>
+      <input id="filter-date" name="filter_date" type="date" class="input" value="{{ filter_date }}" />
+    </div>
+    <div class="input-group">
+      <label class="input-label">Bread Type</label>
+      <select name="filter_bread" class="select">
+        <option value="All">All</option>
+        {% for bread in bread_types %}
+          <option value="{{ bread }}" {% if bread == filter_bread %}selected{% endif %}>{{ bread }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-controls">
+      <button type="submit" class="button button-primary button-sm">Filter</button>
+    </div>
+  </form>
+</div>
+
+<div id="history-table" class="card table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Bread Type</th>
+        <th class="text-right">Produce</th>
+        <th class="text-right">Sold</th>
+        <th class="text-right">Waste</th>
+        <th class="text-right">Price</th>
+        <th class="text-right">Earnings</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in sales %}
+      <tr data-date="{{ row.date }}">
+        <td>{{ row.date }}</td>
+        <td>{{ row.bread_type }}</td>
+        <td class="text-right">{{ row.products_produced }}</td>
+        <td class="text-right">{{ row.actual_qty_sold }}</td>
+        <td class="text-right">{{ row.waste_returns }}</td>
+        <td class="text-right">₱{{ "{:.2f}".format(row.price_per_product) }}</td>
+        <td class="text-right text-success">₱{{ "{:.2f}".format(row.actual_qty_sold * row.price_per_product) }}</td>
+        <td>
+          {% if row.id %}
+            <a href="{{ url_for('edit_sale', record_id=row.id) }}" class="button button-secondary button-sm" style="padding: 4px 8px; font-size: 12px;">Edit</a>
+          {% else %}
+            <form method="post" style="display: inline;">
+              <input type="hidden" name="action" value="edit_record" />
+              <input type="hidden" name="record_id" value="{{ row.id if row.id else loop.index }}" />
+              <button type="submit" class="button button-secondary button-sm" style="padding: 4px 8px; font-size: 12px;">Edit</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not sales %}
+      <tr>
+        <td colspan="8">No matching records found.</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[type="date"]').forEach(function (input) {
+      input.addEventListener('focus', function () {
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+        }
+      });
+      input.addEventListener('click', function () {
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+        }
+      });
+    });
+
+    var filterDate = document.getElementById('filter-date');
+    if (filterDate) {
+      filterDate.addEventListener('change', function () {
+        var form = filterDate.closest('form');
+        if (form) {
+          form.submit();
+        }
+      });
+    }
+  });
+
+  function toggleExpenseSection() {
+    const section = document.getElementById('expense-section');
+    const chevron = document.querySelector('.expense-toggle-header .chevron-icon');
+    const header = document.querySelector('.expense-toggle-header');
+
+    section.classList.toggle('collapsed');
+    if (chevron) chevron.classList.toggle('rotated');
+    if (header) header.classList.toggle('expanded');
+  }
+
+  function toggleManualEntrySection() {
+    const section = document.getElementById('manual-entry-section');
+    const chevron = document.querySelector('.manual-entry-toggle-header .manual-entry-chevron');
+    const header = document.querySelector('.manual-entry-toggle-header');
+
+    if (!section) return;
+    section.classList.toggle('collapsed');
+    if (chevron) chevron.classList.toggle('rotated');
+    if (header) {
+      header.classList.toggle('expanded');
+      const isExpanded = !section.classList.contains('collapsed');
+      header.setAttribute('aria-expanded', String(isExpanded));
+    }
+  }
+
+  document.addEventListener('keydown', function (event) {
+    const toggler = document.querySelector('.manual-entry-toggle-header');
+    if (!toggler) return;
+
+    if (event.target === toggler && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      toggleManualEntrySection();
+    }
+  });
+
+  // dropdown removed from this page
+  // Tabbed filter behavior removed (reverted)
+</script>
+
+<style>
+  .icon-button{background:transparent;border:none;color:inherit;cursor:pointer;padding:6px;border-radius:6px}
+  /* Page-specific: left-align the actions in the sales hero */
+  .sales-hero .sales-hero-content{justify-content:space-between !important; align-items:center !important; gap:20px}
+  .sales-hero .sales-actions{justify-content:flex-end !important}
+  .hero-action-form{display:flex;justify-content:flex-start;align-items:center;gap:8px}
+  .hero-action-form .button{margin-left:6px}
+
+  .button-danger {
+    background: #dc2626;
+    color: white;
+    border: 1px solid #dc2626;
+  }
+  
+  .button-danger:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+  }
+  
+  .button-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .button-lg {
+    padding: 0.95rem 1.7rem;
+    font-size: 16px;
+  }
+  
+  .compact-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    padding: 0.9rem 0;
+  }
+  .compact-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    width: 100%;
+  }
+  .compact-filter-form .input-group {
+    margin: 0;
+    min-width: 220px;
+  }
+  .compact-filter-row .alert {
+    width: 100%;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .manual-entry-toggle-header {
+    cursor: pointer;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(37, 99, 235, 0.08));
+    border: 1px solid rgba(14, 165, 233, 0.18);
+    border-radius: 20px;
+  }
+
+  .manual-entry-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .manual-entry-summary-pill {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(14, 165, 233, 0.10));
+    border: 1px solid rgba(14, 165, 233, 0.16);
+  }
+
+  .manual-entry-section {
+    display: block;
+    padding: 1rem;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(14,165,233,0.05), rgba(37,99,235,0.03));
+    transition: opacity 0.18s ease;
+  }
+
+  .manual-entry-section.collapsed {
+    display: none;
+  }
+
+  .manual-entry-chevron {
+    transition: transform 0.18s ease;
+  }
+
+  .manual-entry-chevron.rotated {
+    transform: rotate(180deg);
+  }
+
+  .sales-entry-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .bread-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
+    justify-content: start;
+    width: 100%;
+    grid-auto-flow: row;
+    align-content: start;
+  }
+
+  .bread-entry-card {
+    position: relative;
+    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-self: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(224,242,254,0.98) 100%);
+    border: 1px solid rgba(14, 165, 233, 0.24);
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+    padding: 1.1rem;
+    min-height: 245px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    backdrop-filter: blur(6px);
+  }
+
+  .bread-entry-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0ea5e9, #2563eb);
+  }
+
+  .bread-entry-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(14, 165, 233, 0.42);
+    box-shadow: 0 20px 42px rgba(15, 23, 42, 0.13);
+  }
+
+  .bread-entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid rgba(14, 165, 233, 0.16);
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 1rem;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(37, 99, 235, 0.10));
+    border-radius: 16px;
+  }
+
+  .bread-entry-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    align-items: end;
+    width: 100%;
+  }
+
+  .bread-entry-fields label {
+    display: grid;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.75rem 0.8rem;
+    border-radius: 14px;
+    background: rgba(14, 165, 233, 0.04);
+    border: 1px solid rgba(14, 165, 233, 0.08);
+  }
+
+  .bread-entry-fields .input {
+    max-width: none;
+    min-height: 48px;
+    border-radius: 14px;
+    background: #ffffff;
+    font-weight: 700;
+    padding: 0.9rem 0.95rem;
+    border: 1px solid rgba(14, 165, 233, 0.24);
+    box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.03);
+    font-size: 1rem;
+  }
+
+  .bread-entry-fields .input:focus {
+    border-color: rgba(14, 165, 233, 0.65);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+  }
+
+  @media (max-width: 900px) {
+    .bread-entry-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bread-entry-fields {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Sales Log tabbed filter styles (page-scoped) */
+  .sales-tabbed-filter { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .sales-tabbed-filter .tabs { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .sales-tabbed-filter .tab {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .sales-tabbed-filter .tab:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(2,6,23,0.04); }
+  .sales-tabbed-filter .tab.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 12px 30px rgba(14,165,233,0.12);
+  }
+  @media (max-width: 520px) {
+    .sales-tabbed-filter { align-items:flex-start; }
+    .sales-tabbed-filter .tab { padding: 8px 10px; font-size: 0.95rem; }
+    .sales-tabbed-filter .tab-help { width:100%; margin-top:8px; font-size:0.9rem; }
+  }
+</style>
+
+<!-- Helper functions for Sales Log buttons -->
+<script>
+// Scroll to history table
+function scrollToHistoryTable(){
+  const el = document.getElementById('history-table');
+  if(el){
+    el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
+// Print sales table
+function printSalesTable(){
+  const wrapper = document.getElementById('history-table');
+  if(!wrapper) return;
+  const tableEl = wrapper.querySelector('table');
+  if(!tableEl){ console.log('[DEBUG] printSalesTable - no table found'); return; }
+
+  const totalRows = tableEl.querySelectorAll('tbody tr').length;
+  const visibleRows = Array.from(tableEl.querySelectorAll('tbody tr')).filter(function(r){
+    try{ const cs = window.getComputedStyle(r); return cs && cs.display !== 'none' && cs.visibility !== 'hidden' && r.offsetParent !== null; }catch(e){ return true; }
+  }).length;
+  console.log('[DEBUG] printSalesTable total=', totalRows, 'visible=', visibleRows);
+
+  const cssHref = "{{ url_for('static', filename='css/style.css') }}";
+  const logoUrl = "{{ url_for('static', filename='logo.png') }}";
+  function buildPopupHtml(tableMarkup){
+    return `<!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>Sales Log</title>
+      <link rel="stylesheet" href="${cssHref}" />
+      <style>
+        table { width: 100%; border-collapse: collapse; }
+        thead th, tbody td { border: 1px solid #222; padding: 6px; color: #000; }
+        tbody tr { display: table-row !important; visibility: visible !important; }
+        tbody td { display: table-cell !important; }
+        thead th { display: table-cell !important; }
+        .print-header { text-align: center; margin-bottom: 12px; }
+        .print-logo { max-width: 80px; height: auto; }
+        @media print { body { -webkit-print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <div class="print-header" aria-hidden="true">
+        <div class="print-header-top">
+          <img src="${logoUrl}" alt="Che Che Bakeshop Logo" class="print-logo" />
+          <div class="print-shop-info">
+            <h1 class="print-shop-name">Che-Che Bakeshop</h1>
+            <p class="print-shop-address">Pototan, Iloilo</p>
+          </div>
+        </div>
+        <h2 class="print-title">Sales Log</h2>
+        <p class="print-copy">Historical record of daily bread sales.</p>
+      </div>
+      <div>
+        ${tableMarkup}
+      </div>
+      <script>
+        function doPrint(){
+          setTimeout(function(){ window.print(); setTimeout(function(){ window.close(); }, 300); }, 250);
+        }
+        if(document.readyState === 'complete'){ doPrint(); } else { window.onload = doPrint; }
+      <\/script>
+    </body>
+    </html>`;
+  }
+
+  function proceedWithClone(){
+    const clone = tableEl.cloneNode(true);
+    clone.querySelectorAll('tr, th, td').forEach(function(el){ try{ el.removeAttribute('style'); }catch(e){}; el.style.display=''; el.style.visibility='visible'; el.removeAttribute('hidden'); });
+    const tableHtml = clone.outerHTML;
+    const html = buildPopupHtml(tableHtml);
+    const w = window.open('', '_blank');
+    w.document.open(); w.document.write(html); w.document.close(); try{ w.focus(); }catch(e){}
+  }
+
+  if(visibleRows === 0 && totalRows > 0){
+    const debugUrl = "{{ url_for('debug_sales_filtered') }}";
+    const fd = (document.getElementById('filter-date') ? document.getElementById('filter-date').value : '');
+    const fbElem = document.querySelector('select[name="filter_bread"]');
+    const fb = (fbElem ? fbElem.value : '{{ filter_bread or "All" }}');
+    const hp = (document.getElementById('tab-history-period') ? document.getElementById('tab-history-period').value : 'all');
+    const url = debugUrl + '?filter_date=' + encodeURIComponent(fd) + '&filter_bread=' + encodeURIComponent(fb) + '&history_period=' + encodeURIComponent(hp) + '&all=1';
+    console.log('[DEBUG] printSalesTable fetching full data from', url);
+    fetch(url, { credentials: 'same-origin' }).then(function(resp){ return resp.json(); }).then(function(json){
+      const data = json && json.sample ? json.sample : [];
+      if(!data || !data.length){
+        return proceedWithClone();
+      }
+      const theadHtml = tableEl.querySelector('thead') ? tableEl.querySelector('thead').outerHTML : '<thead><tr><th>Date</th><th>Bread Type</th><th>Produce</th><th>Sold</th><th>Waste</th><th>Price</th><th>Earnings</th><th>Actions</th></tr></thead>';
+      const rowsHtml = data.map(function(r){
+        const price = Number(r.price_per_product || r.price || 0).toFixed(2);
+        const sold = Number(r.actual_qty_sold || 0);
+        const earnings = (sold * Number(r.price_per_product || r.price || 0)).toFixed(2);
+        return '<tr data-date="'+(r.date||'')+'">' +
+               '<td>' + (r.date||'') + '</td>' +
+               '<td>' + (r.bread_type||'') + '</td>' +
+               '<td class="text-right">' + (r.products_produced||0) + '</td>' +
+               '<td class="text-right">' + (r.actual_qty_sold||0) + '</td>' +
+               '<td class="text-right">' + (r.waste_returns||0) + '</td>' +
+               '<td class="text-right">₱' + price + '</td>' +
+               '<td class="text-right text-success">₱' + earnings + '</td>' +
+               '<td></td></tr>';
+      }).join('');
+      const tableHtml = '<table>' + theadHtml + '<tbody>' + rowsHtml + '</tbody></table>';
+      const html = buildPopupHtml(tableHtml);
+      const w = window.open('', '_blank'); w.document.open(); w.document.write(html); w.document.close(); try{ w.focus(); }catch(e){}
+    }).catch(function(err){ console.error('[DEBUG] printSalesTable fetch failed', err); proceedWithClone(); });
+    return;
+  }
+
+  proceedWithClone();
+}
+</script>
+
+  <!-- Sales Log: client-side tab filtering (scoped to this page) -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const tabContainer = document.querySelector('.sales-tabbed-filter .tabs');
+    if(!tabContainer) return;
+
+    const tabs = Array.from(tabContainer.querySelectorAll('.tab'));
+    const dateInput = document.getElementById('filter-date');
+    const filteredCountEl = document.getElementById('metric-filtered-value');
+    const filterDateLabel = document.getElementById('filter-date-label');
+    // Guard to avoid infinite re-application when observer detects our own changes
+    let isApplyingFilter = false;
+
+    // Robust date parsing: returns either a Date object or an object {start:Date,end:Date} for ranges
+    function parseDate(s){
+      if(!s) return null;
+      const raw = String(s).trim();
+
+      // split ranges like "Jun 1 - Jun 7, 2026" or "Jun 1 – Jun 7, 2026" or "Jun 1 to Jun 7, 2026"
+      const rangeSep = /\s*(?:–|—|-|to)\s*/i;
+      if(rangeSep.test(raw)){
+        const parts = raw.split(rangeSep).map(p=>p.trim()).filter(Boolean);
+        if(parts.length >= 2){
+          const a = parseSingleDate(parts[0]);
+          const b = parseSingleDate(parts[1]);
+          if(a && b){
+            a.setHours(0,0,0,0);
+            b.setHours(23,59,59,999);
+            return { start: a, end: b };
+          }
+        }
+      }
+
+      // single date
+      return parseSingleDate(raw);
+    }
+
+    function parseSingleDate(str){
+      if(!str) return null;
+      // try native Date parse first (ISO, RFC formats)
+      let d = new Date(str);
+      if(!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+      // handle common month name formats like 'Jun 4, 2026' or '4 Jun 2026' or 'June 2026'
+      const monthNames = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      const mMatch = String(str).match(/([A-Za-z]+)\s*(\d{1,2})?,?\s*(\d{4})?/);
+      if(mMatch){
+        const monKey = mMatch[1].slice(0,3).toLowerCase();
+        const month = monthNames[monKey];
+        if(month !== undefined){
+          const day = mMatch[2] ? parseInt(mMatch[2]) : 1;
+          const year = mMatch[3] ? parseInt(mMatch[3]) : (new Date()).getFullYear();
+          return new Date(year, month, day);
+        }
+      }
+
+      // numeric formats dd-mm-yyyy or yyyy-mm-dd or mm/dd/yyyy
+      const normalized = String(str).replace(/[\.\/]/g,'-').replace(/\s+/g,'-');
+      const parts = normalized.split('-').filter(Boolean);
+      if(parts.length === 3){
+        // YYYY-MM-DD
+        if(parts[0].length === 4){
+          const y = parseInt(parts[0]), m = parseInt(parts[1]) - 1, day = parseInt(parts[2]);
+          const dd = new Date(y,m,day);
+          if(!isNaN(dd.getTime())) return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate());
+        }
+        // DD-MM-YYYY
+        const day = parseInt(parts[0]), m = parseInt(parts[1]) - 1, y = parseInt(parts[2]);
+        const dd = new Date(y,m,day);
+        if(!isNaN(dd.getTime())) return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate());
+      }
+
+      return null;
+    }
+
+    function sameDay(a,b){
+      return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    }
+
+    function getWeekRange(d){
+      const date = new Date(d);
+      const day = date.getDay(); // 0 (Sun) - 6
+      const diffToMonday = (day + 6) % 7;
+      const monday = new Date(date);
+      monday.setDate(date.getDate() - diffToMonday);
+      monday.setHours(0,0,0,0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23,59,59,999);
+      return [monday, sunday];
+    }
+
+    function rangesOverlap(aStart,aEnd,bStart,bEnd){
+      return aStart <= bEnd && aEnd >= bStart;
+    }
+
+    // Row cache to avoid reparsing dates repeatedly (improves performance on large tables)
+    const rowCache = new WeakMap();
+    function buildRowCache(){
+      const rows = Array.from(document.querySelectorAll('#history-table tbody tr'));
+      rows.forEach(function(row){
+        if(rowCache.has(row)) return; // already cached
+        const dataAttr = row.dataset && row.dataset.date ? row.dataset.date.trim() : null;
+        const rawCell = row.querySelector('td') ? row.querySelector('td').textContent.trim() : '';
+        const dateSource = dataAttr || rawCell;
+        const parsed = parseDate(dateSource);
+        if(!parsed){
+          rowCache.set(row, { start: null, end: null });
+          return;
+        }
+        let rowStartMs = null, rowEndMs = null;
+        if(parsed.start && parsed.end){
+          rowStartMs = parsed.start.getTime();
+          rowEndMs = parsed.end.getTime();
+        } else if(parsed instanceof Date){
+          rowStartMs = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0,0,0,0).getTime();
+          rowEndMs = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 23,59,59,999).getTime();
+        }
+        rowCache.set(row, { start: rowStartMs, end: rowEndMs });
+      });
+    }
+
+    function applyFilter(range){
+      const dateVal = (dateInput && dateInput.value) ? dateInput.value : ('{{ filter_date or today }}');
+      // selectedDate is parsed as a Date (start of day)
+      const selRaw = dateVal || '{{ today }}';
+      const selParsed = parseSingleDate(selRaw) || new Date();
+      const selYear = selParsed.getFullYear();
+      const selMonth = selParsed.getMonth();
+      const selDay = selParsed.getDate();
+
+      let selStart, selEnd;
+      if(range === 'daily'){
+        selStart = new Date(selYear, selMonth, selDay, 0,0,0,0);
+        selEnd = new Date(selYear, selMonth, selDay, 23,59,59,999);
+      } else if(range === 'weekly'){
+        [selStart, selEnd] = getWeekRange(selParsed);
+      } else if(range === 'monthly'){
+        selStart = new Date(selYear, selMonth, 1, 0,0,0,0);
+        selEnd = new Date(selYear, selMonth + 1, 0, 23,59,59,999);
+      } else if(range === 'yearly'){
+        selStart = new Date(selYear, 0, 1, 0,0,0,0);
+        selEnd = new Date(selYear, 11, 31, 23,59,59,999);
+      } else {
+        selStart = new Date(selYear, selMonth, selDay, 0,0,0,0);
+        selEnd = new Date(selYear, selMonth, selDay, 23,59,59,999);
+      }
+
+      if(filterDateLabel) filterDateLabel.textContent = dateVal || ('{{ today }}');
+      // Avoid re-entrancy from MutationObserver
+      if(isApplyingFilter) return;
+      isApplyingFilter = true;
+      try{
+          // Re-query rows each time in case table was updated dynamically
+          const rows = Array.from(document.querySelectorAll('#history-table tbody tr'));
+          const totalRows = rows.length;
+          let visibleCount = 0;
+          const selStartMs = selStart.getTime();
+          const selEndMs = selEnd.getTime();
+
+          rows.forEach(function(row){
+            const cached = rowCache.get(row);
+            let rowStartMs = cached ? cached.start : null;
+            let rowEndMs = cached ? cached.end : null;
+            if(rowStartMs == null || rowEndMs == null){
+              // Fallback: parse and cache
+              const dataAttr = row.dataset && row.dataset.date ? row.dataset.date.trim() : null;
+              const rawCell = row.querySelector('td') ? row.querySelector('td').textContent.trim() : '';
+              const dateSource = dataAttr || rawCell;
+              const parsed = parseDate(dateSource);
+              if(!parsed){ row.style.display = 'none'; return; }
+              if(parsed.start && parsed.end){ rowStartMs = parsed.start.getTime(); rowEndMs = parsed.end.getTime(); }
+              else { rowStartMs = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0,0,0,0).getTime(); rowEndMs = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 23,59,59,999).getTime(); }
+              rowCache.set(row, { start: rowStartMs, end: rowEndMs });
+            }
+            const visible = (rowStartMs <= selEndMs && rowEndMs >= selStartMs);
+            if(visible){ row.style.display = ''; visibleCount++; } else { row.style.display = 'none'; }
+          });
+
+        // If our filtering hid everything but the table contains rows, assume a parsing/logic error
+        // and restore visibility to avoid the UI appearing empty.
+        if(visibleCount === 0 && totalRows > 0){
+          console.warn('[DEBUG] applyFilter hid all rows; restoring all rows to avoid empty UI');
+          rows.forEach(function(r){ r.style.display = ''; });
+          visibleCount = totalRows;
+        }
+
+        if(filteredCountEl) filteredCountEl.textContent = visibleCount;
+      }finally{
+        isApplyingFilter = false;
+      }
+    }
+
+    // initial cache build and apply
+    buildRowCache();
+    const activeTab = tabContainer.querySelector('.tab.active') || tabs[0];
+    if(activeTab) applyFilter(activeTab.dataset.range);
+
+    // Observe mutations to the table body and reapply the active filter when the table changes.
+    (function(){
+      const tableBodyEl = document.querySelector('#history-table tbody');
+      if(!tableBodyEl) return;
+      let obsTimer = null;
+      const observer = new MutationObserver(function(mutations){
+        if(isApplyingFilter) return;
+        const significant = mutations.some(function(m){
+          if(m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) return true;
+          if(m.type === 'attributes' && ['style','class','hidden'].includes(m.attributeName)) return true;
+          return false;
+        });
+        if(significant){
+          // Debounce rapid mutations
+          clearTimeout(obsTimer);
+          obsTimer = setTimeout(function(){
+            const active = tabContainer.querySelector('.tab.active') || tabs[0];
+            const range = active ? active.dataset.range : 'daily';
+            console.log('[DEBUG] MutationObserver: table changed — rebuilding cache and reapplying filter', range);
+            buildRowCache();
+            applyFilter(range);
+          }, 120);
+        }
+      });
+      observer.observe(tableBodyEl, { childList:true, subtree:true, attributes:true, attributeFilter:['style','class','hidden'] });
+      // Build initial cache once
+      buildRowCache();
+    })();
+
+    const monthlyControls = document.getElementById('monthly-controls');
+    const yearlyControls = document.getElementById('yearly-controls');
+    const monthSelect = document.getElementById('month-select');
+    const monthYearSelect = document.getElementById('month-year-select');
+    const monthApply = document.getElementById('month-apply');
+    const yearSelect = document.getElementById('year-select');
+    const yearApply = document.getElementById('year-apply');
+
+    function showControlsFor(range){
+      monthlyControls.style.display = 'none';
+      yearlyControls.style.display = 'none';
+      if(range === 'monthly') monthlyControls.style.display = 'flex';
+      if(range === 'yearly') yearlyControls.style.display = 'flex';
+    }
+
+    tabs.forEach(function(t){
+      t.addEventListener('click', function(){
+        tabs.forEach(tt => { tt.classList.remove('active'); tt.setAttribute('aria-selected','false'); });
+        t.classList.add('active'); t.setAttribute('aria-selected','true');
+        // Update client-side view immediately
+        applyFilter(t.dataset.range);
+
+        // Show/hide period controls. For monthly/yearly we wait for user to click Apply.
+        showControlsFor(t.dataset.range);
+
+        // Hidden form we'll submit for server-side filtering. For daily/weekly we submit immediately.
+        const tabForm = document.getElementById('tab-filter-form');
+        if(!tabForm) return;
+        const historyInput = document.getElementById('tab-history-period');
+        const dateInputHidden = document.getElementById('tab-filter-date');
+        if(historyInput) historyInput.value = t.dataset.range;
+        
+        // Ensure filter_date is set (default to today if not set)
+        let dateValue = (dateInput && dateInput.value) ? dateInput.value : (function(){
+          const today = new Date();
+          return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        })();
+        
+        if(dateInputHidden) dateInputHidden.value = dateValue;
+
+        if(t.dataset.range === 'monthly' || t.dataset.range === 'yearly'){
+          // don't submit yet; wait for Apply button which will set additional hidden inputs
+          return;
+        }
+
+        // For daily/weekly submit immediately
+        tabForm.submit();
+      });
+    });
+
+    // Apply handlers for Monthly / Yearly
+    if(monthApply){
+      monthApply.addEventListener('click', function(){
+        const tabForm = document.getElementById('tab-filter-form');
+        if(!tabForm) return;
+        const historyInput = document.getElementById('tab-history-period');
+        const dateInputHidden = document.getElementById('tab-filter-date');
+        const monthHidden = document.getElementById('tab-filter-month');
+        if(historyInput) historyInput.value = 'monthly';
+        // build filter_month as YYYY-MM
+        const y = (monthYearSelect && monthYearSelect.value) ? monthYearSelect.value : String(new Date().getFullYear());
+        const m = (monthSelect && monthSelect.value) ? monthSelect.value : String((new Date().getMonth()+1)).padStart(2,'0');
+        if(monthHidden) monthHidden.value = y + '-' + m;
+        
+        // Ensure filter_date is set for backend range calculation
+        let dateValue = (dateInput && dateInput.value) ? dateInput.value : (function(){
+          const today = new Date();
+          return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        })();
+        if(dateInputHidden) dateInputHidden.value = dateValue;
+        
+        tabForm.submit();
+      });
+    }
+
+    if(yearApply){
+      yearApply.addEventListener('click', function(){
+        const tabForm = document.getElementById('tab-filter-form');
+        if(!tabForm) return;
+        const historyInput = document.getElementById('tab-history-period');
+        const dateInputHidden = document.getElementById('tab-filter-date');
+        if(historyInput) historyInput.value = 'yearly';
+        const y = (yearSelect && yearSelect.value) ? yearSelect.value : String(new Date().getFullYear());
+        const monthHidden = document.getElementById('tab-filter-month');
+        if(monthHidden) monthHidden.value = y + '-01'; // for yearly we use January as reference month
+        
+        // Set filter_date to January 1st of selected year for proper year range calculation
+        if(dateInputHidden) dateInputHidden.value = String(y) + '-01-01';
+        
+        tabForm.submit();
+      });
+    }
+
+    // Ensure month/year selects default to current month/year on load
+    try{
+      if(monthSelect) monthSelect.value = String((new Date().getMonth() + 1)).padStart(2,'0');
+      if(monthYearSelect) monthYearSelect.value = String(new Date().getFullYear());
+      if(yearSelect) yearSelect.value = String(new Date().getFullYear());
+    }catch(e){/* ignore */}
+
+    if(dateInput){
+      dateInput.addEventListener('change', function(){
+        const active = tabContainer.querySelector('.tab.active') || tabs[0];
+        applyFilter(active.dataset.range);
+      });
+    }
+
+  });
+  </script>
+
+{% endblock %}

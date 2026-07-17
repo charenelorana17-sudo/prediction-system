@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero card">
+  <div>
+    <h2 class="hero-title">Forecast History</h2>
+    <p class="hero-copy">All saved demand predictions are listed here for review.</p>
+
+  </div>
+  <div class="hero-actions">
+    <form method="get" class="hero-filter-form">
+      <div>
+        <label class="input-label" for="filter_date">Filter by Date</label>
+        <input id="filter_date" type="date" name="filter_date" class="input" value="{{ filter_date }}" onchange="this.form.submit()" />
+      </div>
+    </form>
+    <button type="button" class="button button-secondary" onclick="window.print()">Print Records</button>
+  </div>
+</div>
+
+<div class="card table-wrapper">
+  {% if records %}
+  <table>
+    <thead>
+      <tr>
+        <th>Saved At</th>
+        <th>Prediction Date</th>
+        <th>Bread Type</th>
+        <th class="text-right">Temperature</th>
+        <th class="text-right">Demand</th>
+        <th class="text-right">Buffer</th>
+        <th class="text-right">Recommended</th>
+        <th class="text-right">Confidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in records %}
+      <tr>
+        <td>{{ row.created_at.replace('T', ' ') if row.created_at else '-' }}</td>
+        <td>{{ row.date_predicted if row.date_predicted else '-' }}</td>
+        <td>{{ row.bread_type if row.bread_type else '-' }}</td>
+        <td class="text-right">{{ "{:.1f}".format(row.temperature) if row.temperature is not none else '-' }}</td>
+        <td class="text-right">{{ row.predicted_demand if row.predicted_demand is not none else '-' }}</td>
+        <td class="text-right">{{ row.buffer if row.buffer is not none else '-' }}</td>
+        <td class="text-right">{{ row.recommended_production if row.recommended_production is not none else '-' }}</td>
+        <td class="text-right">{{ row.confidence if row.confidence is not none else '-' }}{% if row.confidence is not none %}%{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      {% if filter_date %}
+        <h3>No records found for {{ filter_date }}</h3>
+        <p>Try a different date or clear the filter to see all forecast history.</p>
+      {% else %}
+        <h3>No forecast history yet</h3>
+        <p>Generate a forecast in Predict Demand to save it here.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block content %}
+{# Model performance page: display model metrics and retraining actions #}
+<style>
+  .model-performance-hero {
+    background: linear-gradient(135deg, #fef3c7 0%, #fff7ed 48%, #f8fafc 100%);
+    border: 1px solid #f2d79b;
+    border-radius: 28px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .model-performance-hero__overlay {
+    padding: 28px;
+  }
+
+  .model-performance-hero__top {
+    margin-bottom: 20px;
+  }
+
+  .model-performance-hero__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .model-performance-hero .hero-title {
+    margin: 0;
+    color: #78350f;
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    text-shadow: none;
+  }
+
+  .model-performance-hero .hero-copy {
+    margin: 8px 0 0;
+    color: #7c2d12;
+    font-size: 1rem;
+    font-weight: 700;
+    text-shadow: none;
+  }
+
+  .model-performance-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .model-performance-kpi-card {
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(181, 122, 23, 0.24);
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(120, 53, 15, 0.08);
+    padding: 18px;
+  }
+
+  .model-performance-kpi-card h3 {
+    margin: 0 0 12px;
+    color: #92400e;
+    font-size: 1rem;
+  }
+
+  .model-performance-kpi-card p strong {
+    font-size: 1.9rem;
+    color: #111827;
+  }
+
+  .model-performance-kpi-card .hero-copy {
+    margin: 10px 0 0;
+    color: #6b7280;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .model-performance-card {
+    background: #fffefb;
+    border: 1px solid #f2d79b;
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  @media (max-width: 1100px) {
+    .model-performance-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 680px) {
+    .model-performance-kpi-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .model-performance-hero__overlay {
+      padding: 18px;
+    }
+  }
+</style>
+<div class="model-performance-hero">
+  <div class="model-performance-hero__overlay">
+      <div class="model-performance-hero__top">
+        <div class="model-performance-hero__header">
+          <div>
+            <h2 class="hero-title">Model Performance</h2>
+            <p class="hero-copy">Review existing accuracy metrics and retrain the model.</p>
+          </div>
+          <form method="post" class="hero-actions">
+            <button type="submit" name="action" value="retrain" class="button button-primary">Retrain Model</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="model-performance-hero__center">
+        <div class="model-performance-kpi-grid">
+      <div class="card model-performance-kpi-card">
+        <h3>R² Score</h3>
+        <p><strong>{{ "{:.2f}".format(metrics.r2) }}</strong></p>
+        <p class="hero-copy">Variance explained by the model.</p>
+      </div>
+      <div class="card model-performance-kpi-card">
+        <h3>MAE</h3>
+        <p><strong>{{ "{:.1f}".format(metrics.mae) }}</strong></p>
+        <p class="hero-copy">Average absolute error.</p>
+      </div>
+      <div class="card model-performance-kpi-card">
+        <h3>Accuracy</h3>
+        <p><strong>{{ metrics.accuracy }}%</strong></p>
+        <p class="hero-copy">Predicted confidence level.</p>
+      </div>
+      <div class="card model-performance-kpi-card">
+        <h3>Training Rows</h3>
+        <p><strong>{{ metrics.trainingCount }}</strong></p>
+        <p class="hero-copy">Historical sales records used for model fitting.</p>
+      </div>
+      <div class="card model-performance-kpi-card">
+        <h3>Validation Rows</h3>
+        <p><strong>{{ metrics.testCount }}</strong></p>
+        <p class="hero-copy">Records used for hold-out evaluation.</p>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Feature Importance</h3>
+  <div class="card-list">
+    {% for item in feature_weights %}
+    <div class="stat-item">
+      <span>{{ item.feature }}</span>
+      <strong>{{ item.weight }}%</strong>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

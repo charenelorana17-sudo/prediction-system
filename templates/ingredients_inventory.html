@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media print {
+    .ingredients-hero-overlay {
+      margin-bottom: 0 !important;
+    }
+    .expense-history-card {
+      margin-top: 0 !important;
+    }
+    #expense-history-details {
+      display: none !important;
+    }
+    .expense-history-actions {
+      display: none !important;
+    }
+  }
+
+  .ingredients-hero-section {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ingredients-hero-section .ingredients-hero-overlay {
+    position: relative;
+    z-index: 2;
+    padding: 1.5rem 1.25rem 2rem;
+  }
+
+  .ingredients-hero-section .ingredients-hero-top {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .ingredients-hero-section .ingredients-hero-top > div {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .ingredients-hero-section .summary-grid.ingredients-kpi-grid {
+    max-width: 1000px;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .ingredients-hero-section .metric-card {
+    background: linear-gradient(180deg, rgba(235, 182, 182, 0.98), rgba(180, 43, 43, 0.93));
+    border: 2px solid rgba(14, 165, 233, 0.18);
+    box-shadow: 0 14px 34px rgba(34, 69, 151, 0.12);
+    min-height: 175px;
+  }
+
+  .ingredients-hero-section .metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  }
+
+  .ingredients-hero-section.hero.card {
+    border-radius: 28px;
+    border: 1px solid rgba(14, 165, 233, 0.16);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+    background: rgba(255, 255, 255, 0.75);
+  }
+
+  .ingredients-hero-section .hero-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(2, 6, 23, 0.38), rgba(2, 6, 23, 0.14), rgba(255, 255, 255, 0.08));
+    z-index: 1;
+  }
+
+  .ingredients-hero-section .hero-title {
+    margin: 0 0 10px;
+    font-size: 2.8rem;
+    line-height: 1.15;
+    color: #ffffff;
+    text-shadow: 0 4px 16px rgba(2, 6, 23, 0.45);
+  }
+
+  .ingredients-hero-section .hero-copy {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow: 0 3px 12px rgba(2, 6, 23, 0.45);
+    font-size: 1.16rem;
+    line-height: 1.6;
+  }
+
+  .ingredients-hero-section .summary-grid.ingredients-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .ingredients-hero-section .summary-grid.ingredients-kpi-grid .metric-card {
+    border-radius: 22px;
+    min-height: 210px;
+    padding: 54px 28px 28px 86px;
+  }
+
+  .ingredients-hero-section .summary-grid.ingredients-kpi-grid .metric-card .metric-label {
+    font-size: 0.84rem;
+    letter-spacing: 0.14em;
+  }
+
+  .ingredients-hero-section .summary-grid.ingredients-kpi-grid .metric-card .metric-value {
+    font-size: 2.25rem;
+  }
+
+  .expense-history-card {
+    border-radius: 28px;
+    border: 1px solid rgba(14, 165, 233, 0.16);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+    overflow: hidden;
+    min-height: 220px;
+  }
+
+  .expense-history-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 1.2rem 1.25rem;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(255, 255, 255, 0.78));
+    border-bottom: 1px solid rgba(14, 165, 233, 0.14);
+  }
+
+  .expense-history-banner-title {
+    margin: 0 0 6px;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .expense-history-banner-copy {
+    margin: 0;
+    color: var(--muted);
+    max-width: 760px;
+  }
+
+  .expense-history-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .expense-history-summary-item {
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .expense-history-summary-item .summary-label {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .expense-history-summary-item .summary-value {
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .expense-history-actions .button {
+    padding: 0.92rem 1.4rem;
+    font-size: 0.98rem;
+  }
+
+  .expense-history-details {
+    padding: 1.2rem 1.25rem 1.35rem;
+    display: grid;
+    gap: 16px;
+  }
+
+  .expense-history-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .details-title {
+    font-size: 1.08rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .details-subtitle {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.94rem;
+  }
+
+  .expense-history-print-area {
+    display: grid;
+    gap: 12px;
+  }
+
+  .expense-history-table-wrapper {
+    padding: 0.5rem 0;
+  }
+
+  .expense-history-table-header h4 {
+    margin: 0 0 4px;
+    font-size: 1.2rem;
+  }
+
+  .expense-section {
+    padding: 1rem 1.15rem 1.2rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.78), rgba(255, 255, 255, 0.6));
+  }
+
+  .scope-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    align-items: end;
+  }
+
+  .expenses-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .expense-item {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.92));
+    border: 1px solid rgba(14, 165, 233, 0.18);
+    border-radius: 22px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    padding: 1rem 1rem 1.15rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+
+  .expense-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+    border-color: rgba(14, 165, 233, 0.42);
+  }
+
+  .expense-item .expense-category h4 {
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0 0 14px;
+  }
+
+  .expense-item .expense-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  .expense-item .expenses-form .input-group {
+    margin-bottom: 0;
+  }
+
+  .expense-item .input {
+    border-radius: 14px;
+    background: #ffffff;
+  }
+
+  .expense-item .input:focus {
+    border-color: rgba(14, 165, 233, 0.65);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+  }
+
+  @media (max-width: 900px) {
+    .expenses-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .expense-item .expense-inputs {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .scope-submit {
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .expense-form-actions {
+    justify-content: flex-start;
+  }
+
+  .expense-form-actions .button-primary {
+    padding-inline: 1.35rem;
+  }
+
+  .card.table-wrapper {
+    border-radius: 24px;
+    border: 1px solid rgba(14, 165, 233, 0.12);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  }
+
+  .action-circle {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .action-circle:hover {
+    transform: translateY(-1px) scale(1.03);
+  }
+
+  .ingredients-hero-section .hero-actions {
+    display: none;
+  }
+</style>
+<div class="ingredients-hero-section hero card">
+  <div class="hero-background">
+    <img src="{{ url_for('static', filename='aa.png') }}" alt="Ingredients display" />
+  </div>
+  <div class="ingredients-hero-overlay">
+    <div class="ingredients-hero-top">
+      <div>
+        <h2 class="hero-title">Ingredients Inventory</h2>
+        <p class="hero-copy">Track stock levels, perform stock-in / stock-out, and monitor low-stock alerts.</p>
+      </div>
+      <div class="hero-actions">
+      </div>
+    </div>
+
+    <div class="summary-grid ingredients-kpi-grid">
+      <div class="metric-card metric-total">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7H20V20H4V7Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 7L12 3L20 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="metric-label">Ingredients Inventory</div>
+        <div class="metric-value">{{ total_ingredients }}</div>
+        <div class="metric-sub">Current stock overview</div>
+      </div>
+      <div class="metric-card metric-total">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15 8H9L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="metric-label">Total Ingredients</div>
+        <div class="metric-value">{{ total_ingredients }}</div>
+        <div class="metric-sub">Total ingredient items tracked</div>
+      </div>
+      <div class="metric-card metric-lowstock">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="metric-label">Low-Stock Count</div>
+        <div class="metric-value">{{ low_stock_count }}</div>
+        <div class="metric-sub">Items below reorder threshold</div>
+      </div>
+      <div class="metric-card metric-restock">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="metric-label">Last Restock</div>
+        <div class="metric-value">{{ last_restock_label or '—' }}</div>
+        <div class="metric-sub">Most recent ingredient restock</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ingredients Expense Breakdown with scope selection -->
+<div class="card expense-history-card printable-history-card" style="margin-top:1rem;">
+  <div class="expense-history-banner">
+    <div>
+      <div class="expense-history-banner-title">Ingredients Expense Breakdown</div>
+      <p class="expense-history-banner-copy">A quick summary of ingredient expenses for the selected period. Expand details to view the full history and print only what matters.</p>
+      <div class="expense-history-summary">
+        <div class="expense-history-summary-item">
+          <span class="summary-label">Selected period</span>
+          <span class="summary-value">{{ expense_scope }}</span>
+        </div>
+        <div class="expense-history-summary-item">
+          <span class="summary-label">Scope</span>
+          <span class="summary-value">{{ scope_type.title() }}</span>
+        </div>
+        <div class="expense-history-summary-item">
+          <span class="summary-label">Total expense</span>
+          <span class="summary-value">₱{{ "{:,.2f}".format(monthly_expense) }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="expense-history-actions">
+      <button type="button" class="button button-secondary" onclick="toggleExpenseHistoryDetails()">View Details</button>
+    </div>
+  </div>
+  <div id="expense-history-details" class="expense-history-details">
+    <div class="expense-history-details-header">
+      <div>
+        <div class="details-title">Expense history detail view</div>
+        <div class="details-subtitle">Print the table after reviewing the latest ingredient expense records.</div>
+      </div>
+      <button type="button" class="button button-primary" onclick="printExpenseHistory()">Print History</button>
+    </div>
+    <div class="expense-history-print-area">
+      <div class="expense-history-table-wrapper">
+        <div class="expense-history-table-header">
+          <div>
+            <h4>Ingredients Expense History</h4>
+            <p class="muted-text">Recent ingredient expense entries for the selected bakery scope.</p>
+          </div>
+        </div>
+        {% if expense_history %}
+        <div class="table-wrapper">
+          <table class="expense-history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Scope</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in expense_history %}
+              <tr>
+                <td>{{ item.created_at }}</td>
+                <td>{{ item.scope_type.title() }} · {{ item.period_key }}</td>
+                <td>{{ item.category }}</td>
+                <td>₱{{ "{:,.2f}".format(item.amount) }}</td>
+                <td>{{ item.unit or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="expense-empty-state">
+          <p>No expense history has been saved yet for this scope.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div id="expense-section" class="expense-section">
+    <form method="get" id="scopeFilterForm" class="expenses-form">
+      <div class="scope-selection">
+        <div class="input-group compact">
+          <label class="input-label" for="scope_type_input">Expense Scope</label>
+          <select id="scope_type_input" name="scope_type" class="input" onchange="document.getElementById('scopeFilterForm').submit()">
+            <option value="daily" {% if scope_type == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if scope_type == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if scope_type == 'monthly' %}selected{% endif %}>Monthly</option>
+          </select>
+        </div>
+        {% if scope_type == 'daily' %}
+        <div class="input-group compact">
+          <label class="input-label" for="selected_date_input">Date</label>
+          <input id="selected_date_input" name="selected_date" type="date" class="input" value="{{ selected_date }}" />
+        </div>
+        {% elif scope_type == 'weekly' %}
+        <div class="input-group compact">
+          <label class="input-label" for="selected_week_input">Week</label>
+          <input id="selected_week_input" name="selected_week" type="week" class="input" value="{{ selected_week }}" />
+        </div>
+        {% else %}
+        <div class="input-group compact">
+          <label class="input-label" for="selected_month_input">Month</label>
+          <input id="selected_month_input" name="selected_month" type="month" class="input" value="{{ selected_month }}" />
+        </div>
+        {% endif %}
+      </div>
+      <div class="scope-submit" style="margin-bottom:1rem; display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+        <button type="submit" class="button button-secondary">Apply Scope</button>
+      </div>
+    </form>
+    <form method="post" class="expenses-form">
+      <input type="hidden" name="scope_type" value="{{ scope_type }}" />
+      <input type="hidden" name="selected_date" value="{{ selected_date }}" />
+      <input type="hidden" name="selected_week" value="{{ selected_week }}" />
+      <input type="hidden" name="selected_month" value="{{ selected_month }}" />
+      <div class="expenses-grid">
+        {% for category in expense_categories %}
+        <div class="expense-item">
+          <div class="expense-category">
+            <h4>{{ category }}</h4>
+          </div>
+          <div class="expense-inputs">
+            <div class="input-group">
+              <label class="input-label">Amount (₱)</label>
+              <input name="amount_{{ category }}" type="number" step="0.01" class="input" value="{{ current_expenses.get(category, {}).get('amount', 0.0) }}" min="0" />
+            </div>
+            <div class="input-group">
+              <label class="input-label">Unit</label>
+              <input name="note_{{ category }}" type="text" class="input" value="{{ current_expenses.get(category, {}).get('note', '') }}" placeholder="e.g. {{ category_units.get(category, 'kg') }}" />
+              {% if category_units.get(category) %}
+              <small class="muted-text">Suggested unit: {{ category_units.get(category) }}</small>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-controls expense-form-actions">
+        <button type="submit" name="action" value="save_expenses" class="button button-primary">Save Expenses</button>
+      </div>
+    </form>
+    <form method="post" class="expenses-form clear-scope-form" style="margin-top:0.75rem;">
+      <input type="hidden" name="action" value="clear_expenses" />
+      <input type="hidden" name="scope_type" value="{{ scope_type }}" />
+      <input type="hidden" name="selected_date" value="{{ selected_date }}" />
+      <input type="hidden" name="selected_week" value="{{ selected_week }}" />
+      <input type="hidden" name="selected_month" value="{{ selected_month }}" />
+    </form>
+  </div>
+</div>
+
+<div class="card table-wrapper" style="margin-top: 1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <h3 style="margin:0;">Stock Levels</h3>
+    <div style="color:var(--muted);font-size:0.95rem;">Click + or − to record stock movements</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Ingredient</th>
+        <th>Current Stock</th>
+        <th>Unit</th>
+        <th>Reorder Threshold</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if ingredients %}
+        {% for ing in ingredients %}
+        {% set low = (ing.current_stock | float) <= (ing.reorder_threshold | float) %}
+        <tr id="ing-row-{{ ing.id }}" class="{% if low %}low-stock{% endif %}">
+          <td>{{ ing.name }}</td>
+          <td id="stock-{{ ing.id }}">{{ "{:,.2f}".format(ing.current_stock | float) }}</td>
+          <td>{{ ing.unit or '' }}</td>
+          <td>{{ "{:,.2f}".format(ing.reorder_threshold | float) }}</td>
+          <td>
+            {% if low %}
+              <span class="status-badge below">Below Target</span>
+            {% elif (ing.current_stock | float) <= 0 %}
+              <span class="status-badge out">Out of Stock</span>
+            {% else %}
+              <span class="status-badge instock">In Stock</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="action-circle plus-btn" title="Stock in" data-id="{{ ing.id }}" data-type="in">＋</button>
+            <button class="action-circle minus-btn" title="Stock out" data-id="{{ ing.id }}" data-type="out">−</button>
+          </td>
+        </tr>
+        <tr class="adjust-row" id="adjust-row-{{ ing.id }}" data-url="{{ url_for('adjust_ingredient', ingredient_id=ing.id) }}" style="display:none;">
+          <td colspan="6">
+            <div class="adjust-form">
+              <div class="input-group" style="min-width:160px;">
+                <label class="input-label">Type</label>
+                <select name="type" class="input adjust-type">
+                  <option value="in">Stock In</option>
+                  <option value="out">Stock Out</option>
+                </select>
+              </div>
+              <div class="input-group" style="min-width:120px;">
+                <label class="input-label">Qty</label>
+                <input name="qty" type="number" step="0" min="0" class="input adjust-qty" />
+              </div>
+              <div class="input-group" style="flex:1;">
+                <label class="input-label">Reason (optional)</label>
+                <input name="note" type="text" class="input adjust-note" placeholder="Reason (optional)" />
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-end;margin-left:8px;">
+                <button type="button" class="button button-primary adjust-save">Save</button>
+                <button type="button" class="button button-secondary adjust-cancel">Cancel</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        {# Fallback: show default list when no ingredients loaded #}
+        {% for ing in default_ingredients %}
+        <tr>
+          <td>{{ ing.name }}</td>
+          <td>{{ "{:,.2f}".format(ing.current_stock | float) }}</td>
+          <td>{{ ing.unit or '' }}</td>
+          <td>{{ "{:,.2f}".format(ing.reorder_threshold | float) }}</td>
+          <td><span class="status-badge below">Below Target</span></td>
+          <td>
+            <button class="action-circle plus-btn" title="Stock in" onclick="alert('Please add this ingredient to DB to enable adjustments')">＋</button>
+            <button class="action-circle minus-btn" title="Stock out" onclick="alert('Please add this ingredient to DB to enable adjustments')">−</button>
+          </td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function toggleAdjustRow(id, type){
+  // hide any open rows
+  document.querySelectorAll('.adjust-row').forEach(r => { if(r.id !== 'adjust-row-'+id) r.style.display='none'; });
+  const row = document.getElementById('adjust-row-'+id);
+  if(!row) return;
+  const sel = row.querySelector('.adjust-type');
+  if(sel && type) sel.value = type;
+  row.style.display = (row.style.display === 'none' || !row.style.display) ? 'table-row' : 'none';
+  const qty = row.querySelector('.adjust-qty'); if(qty) qty.focus();
+}
+
+function cancelAdjustRow(row){
+  if(row) row.style.display = 'none';
+}
+
+async function submitAdjustRow(row){
+  if(!row) return;
+  const id = (row.id || '').replace('adjust-row-','');
+  const url = row.dataset.url;
+  const type = row.querySelector('.adjust-type').value;
+  const qty = parseFloat(row.querySelector('.adjust-qty').value || 0);
+  const note = row.querySelector('.adjust-note').value || '';
+  if(isNaN(qty) || qty <= 0){ alert('Enter a valid positive quantity'); return; }
+  try{
+    const resp = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ amount: qty, type: type, note: note }) });
+    const data = await resp.json();
+    if(!resp.ok || !data.success){ alert('Error: '+(data.error||'Failed to update')); return; }
+    const ing = data.ingredient;
+    const stockEl = document.getElementById('stock-'+id);
+    if(stockEl) stockEl.textContent = Number(ing.current_stock).toFixed(2);
+    const ingRow = document.getElementById('ing-row-'+id);
+    if(ingRow){
+      const low = Number(ing.current_stock) <= Number(ing.reorder_threshold||0);
+      ingRow.classList.toggle('low-stock', low);
+      const statusCell = ingRow.querySelector('.status-badge');
+      if(statusCell){
+        statusCell.textContent = low ? 'Below Target' : (Number(ing.current_stock) <= 0 ? 'Out of Stock' : 'In Stock');
+        statusCell.className = 'status-badge ' + (low ? 'below' : (Number(ing.current_stock) <= 0 ? 'out' : 'instock'));
+      }
+    }
+    // hide the form
+    row.style.display='none';
+  }catch(err){ console.error(err); alert('Unexpected error updating stock'); }
+}
+
+// Delegated event handlers for inline controls
+document.addEventListener('click', function(e){
+  const plus = e.target.closest('.plus-btn');
+  const minus = e.target.closest('.minus-btn');
+  const save = e.target.closest('.adjust-save');
+  const cancel = e.target.closest('.adjust-cancel');
+  if(plus){
+    const id = plus.dataset.id; const type = plus.dataset.type || 'in'; toggleAdjustRow(id, type); return;
+  }
+  if(minus){
+    const id = minus.dataset.id; const type = minus.dataset.type || 'out'; toggleAdjustRow(id, type); return;
+  }
+  if(save){
+    const row = save.closest('.adjust-row'); submitAdjustRow(row); return;
+  }
+  if(cancel){
+    const row = cancel.closest('.adjust-row'); cancelAdjustRow(row); return;
+  }
+});
+
+function toggleExpenseHistoryDetails() {
+  const details = document.getElementById('expense-history-details');
+  const button = document.querySelector('.expense-history-actions button');
+  if (!details) return;
+  details.classList.toggle('expanded');
+  button.textContent = details.classList.contains('expanded') ? 'Hide Details' : 'View Details';
+}
+
+function printExpenseHistory() {
+  const printArea = document.querySelector('.expense-history-print-area');
+  const details = document.getElementById('expense-history-details');
+  const wasExpanded = details && details.classList.contains('expanded');
+
+  if (!printArea) {
+    window.print();
+    return;
+  }
+
+  if (details && !wasExpanded) {
+    details.classList.add('expanded');
+  }
+
+  document.body.classList.add('print-expense-history-only');
+  window.print();
+  document.body.classList.remove('print-expense-history-only');
+
+  if (details && !wasExpanded) {
+    details.classList.remove('expanded');
+  }
+}
+
+</script>
+
+{% endblock %}

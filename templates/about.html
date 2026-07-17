@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+{# About page: app and bakery description for end users #}
+<div class="about-hero hero-fullwidth">
+  <div class="about-hero-bg" aria-hidden="true"></div>
+  <div class="about-hero-overlay">
+    <div class="about-hero-copy">
+      <span class="eyebrow">Che Che Bakeshop</span>
+      <h1>About our bakery and the production system</h1>
+      <p>Since its founding in 1990, Che Che Bakeshop has been a symbol of tradition and excellence in the baking industry. For thirty-six years, the bakeshop has remained committed to a simple yet powerful goal: providing fresh, high-quality bread that brings the community together.
+The story began with the vision of its founder, Mr. Nestor B. Ablanzar. With a passion for baking and a single oven, the journey started with a focus on one product: the Pandesal. In those early years, the bakery dedicated itself to perfecting this Filipino classic. Because of its signature softness and authentic taste, the pandesal quickly became a local favorite, laying the foundation for a business that would span decades.
+As the years passed, Mr. Nestor B. Ablanzar guided the bakeshop through a steady expansion. While the menu grew to include a wide variety of cakes, pastries, and specialty breads, the core philosophy remained unchanged. By combining time-honored baking methods with the finest ingredients, Che Che Bakeshop earned a reputation for consistency and flavor that remains famous to this day.
+Today, Che Che Bakeshop is more than just a store; it is a part of the community’s history. It has served generations of families, from parents who bought bread for their children to those same children who now visit with families of their own.
+</p>
+    </div>
+  </div>
+</div>
+
+<div class="about-details card" style="margin-top: 2rem; padding: 2rem;">
+  <div class="about-details-grid">
+    <div>
+      <h2>Why this system matters</h2>
+      <p>Che Che Bakeshop combines bakery tradition with modern production intelligence. Track actual sales, predict customer demand, and reduce waste without losing the warm, local bakery feel.</p>
+    </div>
+    <div>
+      <h2>How it helps your team</h2>
+      <ul>
+        <li>Plan daily production with greater confidence</li>
+        <li>Keep ingredient stock updated automatically</li>
+        <li>Review historical forecasts, sales, and waste</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+.about-hero.hero-fullwidth {
+  position: relative;
+  width: 100vw;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  min-height: 68vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.about-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('{{ url_for('static', filename='about.png') }}');
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.55);
+  opacity: 0.92;
+}
+.about-hero-overlay {
+  position: relative;
+  z-index: 2;
+  width: min(1200px, calc(100% - 2rem));
+  padding: 2rem;
+  display: grid;
+  gap: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 28px;
+}
+.about-hero-copy {
+  max-width: 680px;
+  color: #ffffff;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.45);
+}
+.about-hero-copy .eyebrow {
+  display: inline-block;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.95);
+}
+.about-hero-copy h1 {
+  font-size: clamp(2.4rem, 4.2vw, 3.8rem);
+  margin: 0 0 1rem;
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+.about-hero-copy p {
+  font-size: 1.08rem;
+  max-width: 620px;
+  color: rgba(255,255,255,0.98);
+  line-height: 1.75;
+}
+.about-details {
+  background: #ffffff;
+}
+.about-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+}
+.about-details h2 {
+  margin-top: 0;
+}
+.about-details ul {
+  list-style: disc inside;
+  margin: 1rem 0 0;
+  padding-left: 1rem;
+  color: #374151;
+}
+.about-details ul li {
+  margin-bottom: 0.75rem;
+}
+@media (max-width: 900px) {
+  .about-hero {
+    min-height: 60vh;
+  }
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .about-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .about-hero-overlay {
+    padding: 1.5rem;
+  }
+  .about-hero-copy h1 {
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+}
+</style>
+{% endblock %}

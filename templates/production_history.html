@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero card">
+  <div>
+    <h2 class="hero-title">Production Log History</h2>
+    <p class="hero-copy">Review historical prediction records with demand, production, and waste outcomes.</p>
+  </div>
+  <div class="hero-actions">
+    <a href="{{ url_for('production_plan') }}" class="button button-secondary">Back to Production Log</a>
+    <button type="button" class="button button-secondary" onclick="window.print()">Print Log</button>
+  </div>
+</div>
+
+<div class="card table-wrapper production-history-table">
+  {% if production_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Bread Type</th>
+        <th>Date</th>
+        <th>Predicted Demand</th>
+        <th>Recommended Production</th>
+        <th>Actual Production</th>
+        <th>Confidence</th>
+        <th>Waste</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in production_rows %}
+      <tr>
+        <td>{{ row.bread_type }}</td>
+        <td>{{ row.date }}</td>
+        <td>{{ row.predicted_demand }}</td>
+        <td>{{ row.recommended_production }}</td>
+        <td>{{ row.actual_production }}</td>
+        <td>{{ row.confidence }}%</td>
+        <td>{{ row.waste }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <h3>No production log history yet</h3>
+      <p>Generate a production log to save prediction results here.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

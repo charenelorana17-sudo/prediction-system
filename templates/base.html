@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Che Che Bakeshop</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Base layout for all pages: shared navbar, logout link, and content block -->
+    <div class="page">
+      <nav class="navbar">
+        <div class="navbar-brand">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="Che Che Bakeshop Logo" style="width: 40px; height: 40px; border-radius: 8px;" />
+          <div>
+            <div class="navbar-title">Che Che Bakeshop</div>
+            <div class="navbar-subtitle">Predictive production system</div>
+          </div>
+        </div>
+        <div class="navbar-links">
+          <a href="{{ url_for('dashboard') }}" class="navbar-link {% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+          <a href="{{ url_for('predict') }}" class="navbar-link {% if active == 'predict' %}active{% endif %}">Predict Demand</a>
+          <a href="{{ url_for('sales_log') }}" class="navbar-link {% if active == 'sales' %}active{% endif %}">Sales Log</a>
+          <a href="{{ url_for('production_plan') }}" class="navbar-link {% if active == 'plan' %}active{% endif %}">Production Log</a>
+           <a href="{{ url_for('ingredients_inventory') }}" class="navbar-link {% if active == 'ingredients' %}active{% endif %}">Ingredients</a>
+          <a href="{{ url_for('model_performance') }}" class="navbar-link {% if active == 'model' %}active{% endif %}">Model Performance</a>
+          <a href="{{ url_for('about') }}" class="navbar-link {% if active == 'about' %}active{% endif %}">About</a>
+        </div>
+        <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
+      </nav>
+      <main class="page-content">
+        <div class="print-header" aria-hidden="true">
+          <div class="print-header-top">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Che Che Bakeshop Logo" class="print-logo" />
+            <div class="print-shop-info">
+              <h1 class="print-shop-name">Che-Che Bakeshop</h1>
+              <p class="print-shop-address">Pototan, Iloilo</p>
+            </div>
+          </div>
+          {% block print_title %}{% endblock %}
+          {% block print_subtitle %}{% endblock %}
+        </div>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

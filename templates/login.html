@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Che Che Bakeshop - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <!-- Login page for bakery staff to access the predictive production system -->
+    <div class="login-shell">
+      <div class="login-card">
+        <div class="login-content">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Che Che Bakeshop Logo" style="width: 120px; height: 120px; border-radius: 12px; margin-bottom: 1rem;" />
+          </div>
+          <h1 class="login-title">Che Che Bakeshop</h1>
+          <p class="login-subtitle">Production Predictive System</p>
+          <div class="card">
+            <div class="input-group">
+              <label class="input-label">Bakery Access Code</label>
+              <input name="password" id="password" type="password" class="input input-large" form="login-form" placeholder="Enter password..." />
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                <input type="checkbox" id="show-password" style="width: 16px; height: 16px;">
+                <label for="show-password" style="font-size: 0.9rem; color: rgba(248, 250, 252, 0.72);">Show Password</label>
+              </div>
+            </div>
+            {% if error %}
+            <div class="alert">{{ error }}</div>
+            {% endif %}
+            <form id="login-form" method="post">
+              <button type="submit" class="button button-primary button-full">Access Dashboard</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.getElementById('show-password').addEventListener('change', function() {
+        const passwordInput = document.getElementById('password');
+        passwordInput.type = this.checked ? 'text' : 'password';
+      });
+    </script>
+  </body>
+</html>

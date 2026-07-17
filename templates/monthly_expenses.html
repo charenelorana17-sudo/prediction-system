@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+{# Expense management page with daily, weekly, and monthly scopes #}
+<div class="production-hero-section">
+  <div class="production-hero-content">
+    <div class="production-hero-left">
+      <h2 class="hero-title">Ingredients Expense Module</h2>
+      <p class="hero-copy">Track ingredient expenses by daily, weekly, or monthly scope in a polished bakery dashboard.</p>
+    </div>
+    <div class="production-hero-right hero-actions scope-panel">
+      <form method="get" class="scope-form">
+        <div class="input-group compact">
+          <label class="input-label" for="scope_type">Expense Scope</label>
+          <select id="scope_type" name="scope_type" class="input">
+            <option value="daily" {% if scope_type == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if scope_type == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if scope_type == 'monthly' %}selected{% endif %}>Monthly</option>
+          </select>
+        </div>
+      {% if scope_type == 'daily' %}
+      <div class="input-group compact">
+        <label class="input-label" for="selected_date">Date</label>
+        <input id="selected_date" name="selected_date" type="date" class="input" value="{{ selected_date }}" />
+      </div>
+      {% elif scope_type == 'weekly' %}
+      <div class="input-group compact">
+        <label class="input-label" for="selected_week">Week</label>
+        <input id="selected_week" name="selected_week" type="week" class="input" value="{{ selected_week }}" />
+      </div>
+      {% else %}
+      <div class="input-group compact">
+        <label class="input-label" for="selected_month">Month</label>
+        <input id="selected_month" name="selected_month" type="month" class="input" value="{{ selected_month }}" />
+      </div>
+      {% endif %}
+      <button type="submit" class="button button-primary">Load Scope</button>
+    </form>
+  </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  {% if message %}
+    <div class="alert">{{ message }}</div>
+  {% endif %}
+  
+  <div class="card-header">
+    <h3>Expense Breakdown for {{ scope_type.title() }}</h3>
+    <p class="muted-text">
+      {% if scope_type == 'daily' %}
+      Selected date: {{ scope_context.expense_date.strftime('%b %d, %Y') }}
+      {% elif scope_type == 'weekly' %}
+      Selected week: Week {{ scope_context.expense_week }}
+      {% else %}
+      Selected month: {{ scope_context.expense_month.strftime('%b %Y') }}
+      {% endif %}
+      · Total: ₱{{ "{:,.2f}".format(total_expense) }}
+    </p>
+  </div>
+  
+  <form method="post" class="expenses-form">
+    <input type="hidden" name="action" value="save_expenses" />
+    <input type="hidden" name="scope_type" value="{{ scope_type }}" />
+    <input type="hidden" name="selected_date" value="{{ selected_date }}" />
+    <input type="hidden" name="selected_week" value="{{ selected_week }}" />
+    <input type="hidden" name="selected_month" value="{{ selected_month }}" />
+    
+    <div class="expense-breakdown card-inner">
+      <table class="expense-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in expense_categories %}
+          <tr>
+            <td>{{ category }}</td>
+            <td>₱{{ "{:,.2f}".format(current_expenses.get(category, {}).get('amount', 0.0)) }}</td>
+            <td>{{ current_expenses.get(category, {}).get('note', '') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="expenses-grid">
+      {% for category in expense_categories %}
+      <div class="expense-item">
+        <div class="expense-category">
+          <h4>{{ category }}</h4>
+        </div>
+        <div class="expense-inputs">
+          <div class="input-group">
+            <label class="input-label">Amount (₱)</label>
+            <input name="amount_{{ category }}" type="number" step="0.01" class="input" 
+                   value="{{ current_expenses.get(category, {}).get('amount', 0.0) }}" min="0" />
+          </div>
+          <div class="input-group">
+            <label class="input-label">Note</label>
+            <input name="note_{{ category }}" type="text" class="input" 
+                   value="{{ current_expenses.get(category, {}).get('note', '') }}" 
+                   placeholder="Optional note" />
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <div class="form-controls" style="margin-top: 2rem;">
+      <button type="submit" class="button button-primary">Save All Expenses</button>
+      <button type="submit" name="action" value="clear_scope" class="button button-secondary" 
+              onclick="return confirm('Clear all expenses for the selected scope?')">Clear Scope</button>
+    </div>
+  </form>
+</div>
+
+<style>
+.expenses-hero {
+  margin-bottom: 2rem;
+}
+
+.expenses-form {
+  padding: 1rem;
+}
+
+.expenses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.expense-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #f9fafb;
+}
+
+.expense-category h4 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.expense-inputs .input-group {
+  margin-bottom: 0.75rem;
+}
+
+.expense-inputs .input-group:last-child {
+  margin-bottom: 0;
+}
+
+.expense-inputs .input {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .expenses-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scope-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.expense-breakdown {
+  margin-bottom: 1.5rem;
+}
+
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.expense-table th,
+.expense-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.expense-table th {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.scope-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.compact {
+  min-width: 180px;
+}
+</style>
+
+{% endblock %}

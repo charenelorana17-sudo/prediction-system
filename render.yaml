@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: prediction-system
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:application --config gunicorn.conf.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: USE_MYSQL
+        value: "1"
+      - key: APP_PREFIX
+        value: ""
+      - key: SECRET_KEY
+        sync: false
+      - key: LOGIN_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: prediction_system
