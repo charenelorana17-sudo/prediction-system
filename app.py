@@ -636,6 +636,33 @@ def init_db():
                 INDEX idx_bread_type (bread_type)
             ) ENGINE=InnoDB
         """)
+
+        # Repair older imported schemas that may have been created without
+        # AUTO_INCREMENT on the primary key. This is required for the app's
+        # save path to work against a cloud database imported from the SQL dump.
+        try:
+            cursor.execute("SHOW INDEX FROM sales_data WHERE Key_name = 'PRIMARY'")
+            primary_key_exists = cursor.fetchone() is not None
+            if not primary_key_exists:
+                cursor.execute("ALTER TABLE sales_data ADD PRIMARY KEY (id)")
+        except mysql.connector.Error as err:
+            print(f"[DEBUG] sales_data primary key repair warning: {err}")
+
+        try:
+            cursor.execute("ALTER TABLE sales_data MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT")
+        except mysql.connector.Error as err:
+            print(f"[DEBUG] sales_data id repair warning: {err}")
+
+        for column_name, definition in (
+            ("bad_waste", "INT NOT NULL DEFAULT 0"),
+            ("good_waste", "INT NOT NULL DEFAULT 0"),
+        ):
+            try:
+                cursor.execute(f"SHOW COLUMNS FROM sales_data LIKE '{column_name}'")
+                if cursor.fetchone() is None:
+                    cursor.execute(f"ALTER TABLE sales_data ADD COLUMN {column_name} {definition}")
+            except mysql.connector.Error as err:
+                print(f"[DEBUG] sales_data column repair warning ({column_name}): {err}")
         
         # Add unique constraint to existing table if not already present
         try:
@@ -776,9 +803,11 @@ def init_db():
             ) ENGINE=InnoDB
         """)
         
-        cursor.execute(
-            "ALTER TABLE sales_data ADD COLUMN IF NOT EXISTS expense_amount DECIMAL(10,2) NOT NULL DEFAULT 0.0"
-        )
+        try:
+            if cursor.fetchone() is None:
+                cursor.execute("ALTER TABLE sales_data ADD COLUMN expense_amount DECIMAL(10,2) NOT NULL DEFAULT 0.0")
+        except mysql.connector.Error as err:
+            print(f"[DEBUG] sales_data expense_amount repair warning: {err}")
         # Create a raw uploads table to preserve original CSV uploads (no unique constraint)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS raw_sales_uploads (
@@ -3110,6 +3139,44 @@ def ingredients_inventory():
     )
     expense_scope = scope_context["period_key"]
 
+    # Fetch expense history for the selected scope
+    expense_history = []
+    if not USE_MYSQL:
+        # For in-memory storage, build history from MONTHLY_EXPENSES
+        bucket = MONTHLY_EXPENSES.get((scope_type, scope_context["period_key"]), {})
+        for category, entry in bucket.items():
+            expense_history.append({
+                "scope_type": scope_type,
+                "period_key": scope_context["period_key"],
+                "category": category,
+                "amount": float(entry.get("amount", 0.0)),
+                "note": entry.get("note", ""),
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+    elif USE_MYSQL:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """SELECT scope_type, period_key, category, amount, note, created_at 
+                   FROM monthly_expenses 
+                   WHERE scope_type = %s AND period_key = %s 
+                   ORDER BY created_at DESC""",
+                (scope_type, scope_context["period_key"])
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            # Convert datetime objects to strings for template rendering
+            for row in rows:
+                if row.get('created_at'):
+                    if isinstance(row['created_at'], datetime):
+                        row['created_at'] = row['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+            expense_history = rows
+        except mysql.connector.Error as err:
+            print("MySQL fetch expense history error:", err)
+            expense_history = []
+
     return render_template(
         "ingredients_inventory.html",
         active="ingredients",
@@ -3127,6 +3194,7 @@ def ingredients_inventory():
         scope_context=scope_context,
         monthly_expense=monthly_expense,
         expense_scope=expense_scope,
+        expense_history=expense_history,
         category_units=category_units,
         message=message,
     )

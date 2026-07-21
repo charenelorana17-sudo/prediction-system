@@ -305,14 +305,7 @@ document.getElementById('view_scope').addEventListener('change', updateDashboard
   </div>
 </div>
 
-<!-- Future Demand Forecast -->
-<div class="card" style="margin-top: 2rem;">
-    <h3>Future Demand Forecast</h3>
-    <p class="hero-copy chart-subtitle">AI-powered predictions for the next 14 days</p>
-    <div class="chart-container-large">
-        <canvas id="futureDemandChart" style="max-height: 400px;"></canvas>
-    </div>
-</div>
+
 
 
 <script>
@@ -454,8 +447,8 @@ function buildChart() {
       }, {
         label: 'Expenses (₱)',
         data: monthlyExpenses,
-        backgroundColor: '#ffffff',
-        borderColor: '#ffffff',
+        backgroundColor: '#00FF00',
+        borderColor: '#00FF00',
         borderWidth: 1,
         yAxisID: 'y'
       }, {
@@ -508,66 +501,7 @@ function buildChart() {
     }
   });
 
-  // Future Demand Forecast Chart
-  const futureDemandCtx = document.getElementById('futureDemandChart').getContext('2d');
-  new Chart(futureDemandCtx, {
-    type: 'line',
-    data: {
-      labels: futureForecast.map(item => item.date_label),
-      datasets: [{
-        label: 'Predicted Daily Demand',
-        data: futureForecast.map(item => item.predicted_demand),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: function(context) {
-          const index = context.dataIndex;
-          return futureForecast[index] && futureForecast[index].is_weekend ? '#f59e0b' : '#10b981';
-        },
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: { color: 'rgba(255, 255, 255, 0.8)', usePointStyle: true, pointStyle: 'circle' }
-        },
-        tooltip: {
-          callbacks: {
-            afterLabel: function(context) {
-              const index = context.dataIndex;
-              const item = futureForecast[index] || {};
-              return [
-                `Temperature: ${item.temperature || '-'}°C`,
-                `Weekend: ${item.is_weekend ? 'Yes' : 'No'}`,
-                `Holiday: ${item.is_holiday ? 'Yes' : 'No'}`
-              ];
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255, 255, 255, 0.1)' },
-          ticks: { color: 'rgba(255, 255, 255, 0.8)', callback: function(value) { return value + ' units'; } },
-          title: { display: true, text: 'Predicted Demand (Units)', color: 'rgba(255, 255, 255, 0.8)' }
-        },
-        x: {
-          grid: { color: 'rgba(255, 255, 255, 0.1)' },
-          ticks: { color: 'rgba(255, 255, 255, 0.8)', maxRotation: 45, minRotation: 45 },
-          title: { display: true, text: 'Date', color: 'rgba(255, 255, 255, 0.8)' }
-        }
-      }
-    }
-  });
+
 }
 
 window.addEventListener('DOMContentLoaded', buildChart);

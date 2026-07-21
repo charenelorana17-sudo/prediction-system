@@ -2,17 +2,131 @@
 {% block content %}
 <style>
   @media print {
-    .ingredients-hero-overlay {
-      margin-bottom: 0 !important;
-    }
-    .expense-history-card {
-      margin-top: 0 !important;
-    }
-    #expense-history-details {
+    /* Hide all content by default */
+    body > * {
       display: none !important;
     }
-    .expense-history-actions {
+    
+    /* Show the card when print class is active */
+    body.print-expense-history-only .expense-history-card {
+      display: block !important;
+      position: static !important;
+      margin: 0 !important;
+      padding: 20px !important;
+      width: 100% !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    
+    body.print-expense-history-only .expense-history-banner {
+      display: block !important;
+      padding: 0 0 20px 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      background: transparent !important;
+    }
+    
+    body.print-expense-history-only .expense-history-banner-title {
+      font-size: 18pt !important;
+      margin: 0 0 10px 0 !important;
+    }
+    
+    body.print-expense-history-only .expense-history-summary,
+    body.print-expense-history-only .expense-history-actions {
       display: none !important;
+    }
+    
+    body.print-expense-history-only #expense-history-details {
+      display: block !important;
+      padding: 0 !important;
+      max-height: none !important;
+      gap: 0 !important;
+    }
+    
+    body.print-expense-history-only .expense-history-details-header {
+      display: block !important;
+      margin-bottom: 15px !important;
+      border-bottom: 2px solid #333 !important;
+      padding-bottom: 10px !important;
+    }
+    
+    body.print-expense-history-only .expense-history-details-header .button {
+      display: none !important;
+    }
+    
+    body.print-expense-history-only .details-title {
+      font-size: 14pt !important;
+      margin: 0 0 5px 0 !important;
+    }
+    
+    body.print-expense-history-only .details-subtitle {
+      font-size: 10pt !important;
+      margin: 0 !important;
+    }
+    
+    body.print-expense-history-only .expense-history-print-area {
+      display: block !important;
+      margin: 0 !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table-wrapper {
+      display: block !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table-header {
+      margin-bottom: 15px !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table-header h4 {
+      font-size: 12pt !important;
+      margin: 0 0 3px 0 !important;
+    }
+    
+    body.print-expense-history-only .table-wrapper {
+      display: block !important;
+      margin: 0 !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table {
+      display: table !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 0 !important;
+      font-size: 10pt !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table thead {
+      display: table-header-group !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table tbody {
+      display: table-row-group !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table tr {
+      display: table-row !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table th {
+      display: table-cell !important;
+      padding: 8px !important;
+      border: 1px solid #333 !important;
+      background-color: #f0f0f0 !important;
+      font-weight: bold !important;
+      text-align: left !important;
+    }
+    
+    body.print-expense-history-only .expense-history-table td {
+      display: table-cell !important;
+      padding: 8px !important;
+      border: 1px solid #ccc !important;
+      text-align: left !important;
+    }
+    
+    body.print-expense-history-only .expense-empty-state {
+      display: block !important;
+      padding: 20px !important;
+      text-align: center !important;
     }
   }
 
@@ -180,9 +294,18 @@
   }
 
   .expense-history-details {
-    padding: 1.2rem 1.25rem 1.35rem;
-    display: grid;
+    padding: 0;
+    display: none;
     gap: 16px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+
+  .expense-history-details.expanded {
+    display: grid;
+    padding: 1.2rem 1.25rem 1.35rem;
+    max-height: 2000px;
   }
 
   .expense-history-details-header {
@@ -436,7 +559,7 @@
                 <td>{{ item.scope_type.title() }} · {{ item.period_key }}</td>
                 <td>{{ item.category }}</td>
                 <td>₱{{ "{:,.2f}".format(item.amount) }}</td>
-                <td>{{ item.unit or '—' }}</td>
+                <td>{{ item.note or '—' }}</td>
               </tr>
               {% endfor %}
             </tbody>
