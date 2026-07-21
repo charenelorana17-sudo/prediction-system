@@ -810,14 +810,15 @@ def init_db():
 
         # Create ingredients inventory table
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS ingredients (
+            CREATE TABLE IF NOT EXISTS ingredients (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(200) NOT NULL UNIQUE,
+                name VARCHAR(200) NOT NULL,
                 current_stock DECIMAL(14,4) NOT NULL DEFAULT 0,
-                unit VARCHAR(50) NOT NULL,
+                unit VARCHAR(50) NOT NULL DEFAULT '',
                 reorder_threshold DECIMAL(14,4) NOT NULL DEFAULT 0,
-                last_restock DATETIME,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_restock DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ingredient_name (name)
             ) ENGINE=InnoDB
         """)
 
@@ -956,20 +957,37 @@ def get_expense_scope_context(scope_type="monthly", selected_date=None, selected
 
 
 def save_monthly_expense(month_value, category, amount, note="", scope_type="monthly", period_key=None):
-    print("save_monthly_expense() called")
     ensure_monthly_expenses_table_schema()
     scope_type = (scope_type or "monthly").strip().lower()
     if scope_type == "daily":
-        expense_date = parse_date(period_key or month_value) or date.today()
+        print("month_value:", repr(month_value))
+        print("period_key:", repr(period_key))
+
+        expense_date = parse_date(period_key or month_value)
+
+        print("parsed expense_date:", repr(expense_date))
+
+        if expense_date is None:
+            expense_date = date.today()
+
+        print("final expense_date:", repr(expense_date))
+
         period_value = expense_date.strftime("%Y-%m-%d")
-        expense_month_value = None
+        expense_month_value = expense_date
+
+        print("expense_month_value:", repr(expense_month_value))
     elif scope_type == "weekly":
         week_value = period_key or month_value
         if isinstance(week_value, str) and "-W" in week_value:
             period_value = week_value
         else:
             period_value = f"{date.today().year}-W{date.today().isocalendar().week:02d}"
-        expense_month_value = None
+        # For weekly, set expense_month_value to the ISO week start (Monday)
+        try:
+            y, w = parse_week(week_value) or (date.today().isocalendar().year, date.today().isocalendar().week)
+            expense_month_value = date.fromisocalendar(int(y), int(w), 1)
+        except Exception:
+            expense_month_value = None
     else:
         expense_month_value = parse_month(period_key or month_value) or date.today().replace(day=1)
         period_value = expense_month_value.strftime("%Y-%m")
@@ -980,12 +998,10 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
         return True
 
     if USE_MYSQL:
-        conn = None
-        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            # Log current database and params for hosted diagnostics
+            # Diagnostic: print current database for hosted checks
             try:
                 cursor.execute("SELECT DATABASE()")
                 print("DB:", cursor.fetchone())
@@ -1004,28 +1020,14 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
             )
             print("Rows affected:", getattr(cursor, 'rowcount', None))
             conn.commit()
+            cursor.close()
+            conn.close()
             return True
-        except Exception as err:
-            import traceback
-            traceback.print_exc()
-            print("SAVE ERROR:", err)
-            try:
-                if conn:
-                    conn.rollback()
-            except Exception:
-                pass
+        except mysql.connector.Error as err:
+            # Return error message so caller can show it
+            print("MySQL monthly expense save error:", err)
             return False
-        finally:
-            try:
-                if cursor:
-                    cursor.close()
-            except Exception:
-                pass
-            try:
-                if conn:
-                    conn.close()
-            except Exception:
-                pass
+
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
