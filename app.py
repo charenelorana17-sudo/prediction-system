@@ -980,24 +980,44 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
         return True
 
     if USE_MYSQL:
+        conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            print("Saving:", scope_type, period_value, expense_month_value, category, amount, note)
-            cursor.execute("""
+            params = (scope_type, period_value, expense_month_value, category, float(amount), note)
+            print("Saving monthly expense, params:", repr(params))
+            cursor.execute(
+                """
                 INSERT INTO monthly_expenses (scope_type, period_key, expense_month, category, amount, note)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE amount = VALUES(amount), note = VALUES(note)
-            """, (scope_type, period_value, expense_month_value, category, amount, note,))
+                """,
+                params,
+            )
             conn.commit()
-            cursor.close()
-            conn.close()
             return True
         except Exception as err:
             import traceback
             traceback.print_exc()
             print("SAVE ERROR:", err)
+            try:
+                if conn:
+                    conn.rollback()
+            except Exception:
+                pass
             return False
+        finally:
+            try:
+                if cursor:
+                    cursor.close()
+            except Exception:
+                pass
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
