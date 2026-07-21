@@ -2876,7 +2876,22 @@ def monthly_expenses():
                 amount = float(request.form.get(f"amount_{category}", 0.0) or 0.0)
                 note = request.form.get(f"note_{category}", "").strip()
                 if amount > 0:
-                    save_monthly_expense(selected_month, category, amount, note, scope_type=scope_type, period_key=scope_context["period_key"])
+                    print(f"Saving {category} = {amount}")
+
+                    ok = save_monthly_expense(
+                        selected_month,
+                        category,
+                        amount,
+                        note,
+                        scope_type=scope_type,
+                        period_key=scope_context["period_key"],
+                    )
+
+                    print("SAVE RESULT:", ok)
+
+                    if not ok:
+                        message = f"Failed to save {category}"
+                        break
             message = f"{scope_type.title()} expenses saved successfully."
         elif action == "clear_scope":
             if USE_MYSQL:
