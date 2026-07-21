@@ -991,11 +991,11 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
             cursor.close()
             conn.close()
             return True
-        except mysql.connector.Error as err:
-            # Return error message so caller can show it
-            print("MySQL monthly expense save error:", err)
-            return False
-
+        except Exception as err:
+             import traceback
+             traceback.print_exc()
+             print("SAVE ERROR:", err)
+        return False
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
