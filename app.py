@@ -985,6 +985,13 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # Log current database and params for hosted diagnostics
+            try:
+                cursor.execute("SELECT DATABASE()")
+                print("DB:", cursor.fetchone())
+            except Exception:
+                pass
+
             params = (scope_type, period_value, expense_month_value, category, float(amount), note)
             print("Saving monthly expense, params:", repr(params))
             cursor.execute(
@@ -995,6 +1002,7 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
                 """,
                 params,
             )
+            print("Rows affected:", getattr(cursor, 'rowcount', None))
             conn.commit()
             return True
         except Exception as err:
