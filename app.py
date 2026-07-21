@@ -2872,11 +2872,24 @@ def monthly_expenses():
     if request.method == "POST":
         action = request.form.get("action")
         if action == "save_expenses":
+
+            print("===== SAVE BUTTON CLICKED =====")
+            print(request.form)
+
             for category in expense_categories:
-                amount = float(request.form.get(f"amount_{category}", 0.0) or 0.0)
+
+                print("CATEGORY:", category)
+
+                raw_amount = request.form.get(f"amount_{category}")
+                print("RAW AMOUNT:", raw_amount)
+
+                amount = float(raw_amount or 0.0)
                 note = request.form.get(f"note_{category}", "").strip()
+
+                print("AMOUNT:", amount)
+
                 if amount > 0:
-                    print(f"Saving {category} = {amount}")
+                    print("Saving...", category)
 
                     ok = save_monthly_expense(
                         selected_month,
@@ -2889,9 +2902,6 @@ def monthly_expenses():
 
                     print("SAVE RESULT:", ok)
 
-                    if not ok:
-                        message = f"Failed to save {category}"
-                        break
             message = f"{scope_type.title()} expenses saved successfully."
         elif action == "clear_scope":
             if USE_MYSQL:
