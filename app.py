@@ -997,7 +997,7 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
              import traceback
              traceback.print_exc()
              print("SAVE ERROR:", err)
-            return False
+             return False
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
