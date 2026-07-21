@@ -956,6 +956,7 @@ def get_expense_scope_context(scope_type="monthly", selected_date=None, selected
 
 
 def save_monthly_expense(month_value, category, amount, note="", scope_type="monthly", period_key=None):
+    print("save_monthly_expense() called")
     ensure_monthly_expenses_table_schema()
     scope_type = (scope_type or "monthly").strip().lower()
     if scope_type == "daily":
@@ -982,6 +983,7 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            print("Saving:", scope_type, period_value, expense_month_value, category, amount, note)
             cursor.execute("""
                 INSERT INTO monthly_expenses (scope_type, period_key, expense_month, category, amount, note)
                 VALUES (%s, %s, %s, %s, %s, %s)
@@ -995,7 +997,7 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
              import traceback
              traceback.print_exc()
              print("SAVE ERROR:", err)
-        return False
+            return False
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
