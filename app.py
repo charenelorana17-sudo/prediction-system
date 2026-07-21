@@ -14,6 +14,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
+import logging
 
 # Main application:
 # This Flask app manages bakery sales records, trains a demand prediction model,
@@ -63,6 +64,11 @@ if PREFIX:
     app.static_url_path = f"{PREFIX}/static"
 else:
     app.static_url_path = "/static"
+
+# Logging
+logger = logging.getLogger(__name__)
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.INFO)
 
 @app.context_processor
 def inject_prefix():
@@ -609,11 +615,16 @@ def ensure_monthly_expenses_table_schema():
 def init_db():
     if not USE_MYSQL:
         return
+    # Ensure the database exists first
+    ensure_database()
+
+    # First connection: core tables and repairs
+    conn = None
+    cursor = None
     try:
-        ensure_database()
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Create sales_data table with unique constraint on (date, bread_type)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS sales_data (
@@ -646,12 +657,12 @@ def init_db():
             if not primary_key_exists:
                 cursor.execute("ALTER TABLE sales_data ADD PRIMARY KEY (id)")
         except mysql.connector.Error as err:
-            print(f"[DEBUG] sales_data primary key repair warning: {err}")
+            logger.debug("sales_data primary key repair warning: %s", err)
 
         try:
             cursor.execute("ALTER TABLE sales_data MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT")
         except mysql.connector.Error as err:
-            print(f"[DEBUG] sales_data id repair warning: {err}")
+            logger.debug("sales_data id repair warning: %s", err)
 
         for column_name, definition in (
             ("bad_waste", "INT NOT NULL DEFAULT 0"),
@@ -662,18 +673,18 @@ def init_db():
                 if cursor.fetchone() is None:
                     cursor.execute(f"ALTER TABLE sales_data ADD COLUMN {column_name} {definition}")
             except mysql.connector.Error as err:
-                print(f"[DEBUG] sales_data column repair warning ({column_name}): {err}")
-        
+                logger.debug("sales_data column repair warning (%s): %s", column_name, err)
+
         # Add unique constraint to existing table if not already present
         try:
             cursor.execute("""
                 ALTER TABLE sales_data ADD CONSTRAINT uk_date_bread_type UNIQUE (date, bread_type)
             """)
         except mysql.connector.Error as err:
-            # Constraint already exists or other error, ignore
+            # Constraint already exists or other error, ignore unless unexpected
             if 'Duplicate key name' not in str(err):
-                print(f"[DEBUG] ALTER TABLE warning (may be OK): {err}")
-        
+                logger.debug("ALTER TABLE warning (may be OK): %s", err)
+
         # Create users table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -687,7 +698,7 @@ def init_db():
                 INDEX idx_username (username)
             ) ENGINE=InnoDB
         """)
-        
+
         # Create model_performance table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS model_performance (
@@ -704,7 +715,7 @@ def init_db():
                 INDEX idx_training_date (training_date)
             ) ENGINE=InnoDB
         """)
-        
+
         # Create predictions table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS predictions (
@@ -724,7 +735,7 @@ def init_db():
                 INDEX idx_date_predicted (date_predicted)
             ) ENGINE=InnoDB
         """)
-        
+
         # Create production_plan table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS production_plan (
@@ -749,7 +760,7 @@ def init_db():
             cursor.execute("ALTER TABLE production_plan ADD UNIQUE INDEX unique_plan_entry (plan_date, bread_type, day_date)")
         except mysql.connector.Error:
             pass
-        
+
         # Create monthly expenses table if it does not exist yet
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS monthly_expenses (
@@ -768,10 +779,32 @@ def init_db():
             ) ENGINE=InnoDB
         """)
         conn.commit()
-        cursor.close()
-        conn.close()
-        ensure_monthly_expenses_table_schema()
+    except mysql.connector.Error as err:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("MySQL init error (core tables): %s", err)
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 
+    # Ensure monthly expenses schema (separate connection inside function)
+    ensure_monthly_expenses_table_schema()
+
+    # Second connection: ingredients, transactions, and raw uploads
+    conn = None
+    cursor = None
+    try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -802,12 +835,14 @@ def init_db():
                 CONSTRAINT fk_ingredient FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
             ) ENGINE=InnoDB
         """)
-        
+
         try:
+            cursor.execute("SHOW COLUMNS FROM sales_data LIKE 'expense_amount'")
             if cursor.fetchone() is None:
                 cursor.execute("ALTER TABLE sales_data ADD COLUMN expense_amount DECIMAL(10,2) NOT NULL DEFAULT 0.0")
         except mysql.connector.Error as err:
-            print(f"[DEBUG] sales_data expense_amount repair warning: {err}")
+            logger.debug("sales_data expense_amount repair warning: %s", err)
+
         # Create a raw uploads table to preserve original CSV uploads (no unique constraint)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS raw_sales_uploads (
@@ -829,11 +864,25 @@ def init_db():
             ) ENGINE=InnoDB
         """)
         conn.commit()
-        print("Database tables initialized successfully")
-        cursor.close()
-        conn.close()
+        logger.info("Database tables initialized successfully")
     except mysql.connector.Error as err:
-        print("MySQL init error:", err)
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("MySQL init error (ingredients/raw uploads): %s", err)
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 
 
 def fetch_sales_from_db():
