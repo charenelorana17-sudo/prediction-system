@@ -811,14 +811,14 @@ def init_db():
         # Create ingredients inventory table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS ingredients (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(200) NOT NULL UNIQUE,
-            current_stock DECIMAL(14,4) NOT NULL DEFAULT 0,
-            unit VARCHAR(50) NOT NULL,
-            reorder_threshold DECIMAL(14,4) NOT NULL DEFAULT 0,
-            last_restock DATETIME,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(200) NOT NULL UNIQUE,
+                current_stock DECIMAL(14,4) NOT NULL DEFAULT 0,
+                unit VARCHAR(50) NOT NULL,
+                reorder_threshold DECIMAL(14,4) NOT NULL DEFAULT 0,
+                last_restock DATETIME,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB
         """)
 
         # Create ingredient transactions log
@@ -994,10 +994,10 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
             conn.close()
             return True
         except Exception as err:
-             import traceback
-             traceback.print_exc()
-             print("SAVE ERROR:", err)
-             return False
+            import traceback
+            traceback.print_exc()
+            print("SAVE ERROR:", err)
+            return False
 
 def fetch_monthly_expenses(month_value, scope_type="monthly", period_key=None):
     ensure_monthly_expenses_table_schema()
