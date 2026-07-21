@@ -1005,6 +1005,15 @@ def save_monthly_expense(month_value, category, amount, note="", scope_type="mon
             try:
                 cursor.execute("SELECT DATABASE()")
                 print("DB:", cursor.fetchone())
+                # Also fetch and print the CREATE TABLE output for diagnostics on Render
+                try:
+                    cursor.execute("SHOW CREATE TABLE monthly_expenses")
+                    table = cursor.fetchone()
+                    print("TABLE FROM RENDER:")
+                    print(table)
+                except Exception:
+                    # If SHOW CREATE TABLE fails, continue without blocking saves
+                    pass
             except Exception:
                 pass
 
